@@ -16,7 +16,7 @@ services:
       - key: DEBUG
         value: False
       - key: ALLOWED_HOSTS
-        value: "*.onrender.com,localhost,127.0.0.1"
+        value: "smart-time-table-management-system.onrender.com,*.onrender.com,localhost,127.0.0.1"
 
 databases:
   - name: timetable-db

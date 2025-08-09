@@ -28,7 +28,17 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-produc
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+# ALLOWED_HOSTS configuration for production
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,*.onrender.com').split(',')
+
+# Add common Render domain patterns
+if not DEBUG:
+    ALLOWED_HOSTS.extend([
+        'smart-time-table-management-system.onrender.com',
+        '.onrender.com',
+        'enhanced-timetable-system.onrender.com',
+        'timetable-system.onrender.com'
+    ])
 
 
 # Application definition
