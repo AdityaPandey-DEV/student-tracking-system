@@ -20,3 +20,6 @@ requests==2.31.0
 pandas==2.1.4
 numpy==1.24.4
 gunicorn==21.2.0
+dj-database-url==2.1.0
+psycopg2-binary==2.9.9
+whitenoise==6.6.0
