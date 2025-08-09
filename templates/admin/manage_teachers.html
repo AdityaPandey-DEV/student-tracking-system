@@ -1,0 +1,349 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Teachers - Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">Manage Teachers</h1>
+                    <p class="text-muted">Add teachers and manage their subject assignments</p>
+                </div>
+                <div>
+                    <a href="{% url 'accounts:admin_dashboard' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Add Teacher Form -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Add New Teacher</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_teacher">
+                        
+                        <div class="mb-3">
+                            <label for="employee_id" class="form-label">Employee ID</label>
+                            <input type="text" class="form-control" id="employee_id" name="employee_id" required 
+                                   placeholder="e.g., EMP001" style="text-transform: uppercase;">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="teacher_name" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="teacher_name" name="name" required 
+                                   placeholder="e.g., Dr. John Smith">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email" required 
+                                   placeholder="teacher@college.edu">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="phone_number" class="form-label">Phone Number</label>
+                            <input type="text" class="form-control" id="phone_number" name="phone_number" 
+                                   placeholder="+1-555-0123">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="department" class="form-label">Department</label>
+                            <select class="form-select" id="department" name="department" required>
+                                <option value="">Select Department</option>
+                                <option value="Computer Science">Computer Science</option>
+                                <option value="Mathematics">Mathematics</option>
+                                <option value="Physics">Physics</option>
+                                <option value="Chemistry">Chemistry</option>
+                                <option value="Electronics">Electronics</option>
+                                <option value="Mechanical">Mechanical</option>
+                                <option value="Civil">Civil</option>
+                                <option value="English">English</option>
+                                <option value="Management">Management</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="designation" class="form-label">Designation</label>
+                            <select class="form-select" id="designation" name="designation">
+                                <option value="">Select Designation</option>
+                                <option value="Professor">Professor</option>
+                                <option value="Associate Professor">Associate Professor</option>
+                                <option value="Assistant Professor">Assistant Professor</option>
+                                <option value="Lecturer">Lecturer</option>
+                                <option value="Senior Lecturer">Senior Lecturer</option>
+                                <option value="Visiting Faculty">Visiting Faculty</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="specialization" class="form-label">Specialization</label>
+                            <textarea class="form-control" id="specialization" name="specialization" rows="2" 
+                                      placeholder="Areas of expertise and specialization"></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-plus me-1"></i>Add Teacher
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assign Subject Form -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Assign Subject to Teacher</h5>
+                </div>
+                <div class="card-body">
+                    {% if teachers and subjects %}
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="assign_subject">
+                            
+                            <div class="mb-3">
+                                <label for="teacher_select" class="form-label">Select Teacher</label>
+                                <select class="form-select" id="teacher_select" name="teacher_id" required>
+                                    <option value="">Choose Teacher</option>
+                                    {% for teacher in teachers %}
+                                        <option value="{{ teacher.id }}">{{ teacher.name }} ({{ teacher.employee_id }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="subject_select" class="form-label">Select Subject</label>
+                                <select class="form-select" id="subject_select" name="subject_id" required>
+                                    <option value="">Choose Subject</option>
+                                    {% for subject in subjects %}
+                                        <option value="{{ subject.id }}">{{ subject.code }} - {{ subject.name }} ({{ subject.course.name }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-link me-1"></i>Assign Subject
+                            </button>
+                        </form>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Please add teachers and subjects first before making assignments.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Stats Card -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Quick Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="border-end">
+                                <h4 class="text-primary mb-1">{{ teachers.count }}</h4>
+                                <small class="text-muted">Total Teachers</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="border-end">
+                                <h4 class="text-success mb-1">{{ teacher_assignments.count }}</h4>
+                                <small class="text-muted">Subject Assignments</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-info mb-1">{{ subjects.count }}</h4>
+                            <small class="text-muted">Available Subjects</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Existing Teachers -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">All Teachers</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Employee ID</th>
+                                    <th>Name</th>
+                                    <th>Department</th>
+                                    <th>Designation</th>
+                                    <th>Contact</th>
+                                    <th>Subjects Assigned</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for teacher in teachers %}
+                                    <tr>
+                                        <td><strong>{{ teacher.employee_id }}</strong></td>
+                                        <td>{{ teacher.name }}</td>
+                                        <td>{{ teacher.department }}</td>
+                                        <td>{{ teacher.designation|default:"Not Set" }}</td>
+                                        <td>
+                                            <small>{{ teacher.email }}</small><br>
+                                            <small class="text-muted">{{ teacher.phone_number|default:"No phone" }}</small>
+                                        </td>
+                                        <td>
+                                            {% with assigned_subjects=teacher_assignments|dictsort:"teacher_id" %}
+                                                {% for assignment in teacher_assignments %}
+                                                    {% if assignment.teacher.id == teacher.id %}
+                                                        <span class="badge bg-primary me-1 mb-1">{{ assignment.subject.code }}</span>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% endwith %}
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-info" 
+                                                    onclick="viewTeacherDetails('{{ teacher.id }}')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-warning" 
+                                                    onclick="editTeacher('{{ teacher.id }}')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">
+                                            <i class="fas fa-chalkboard-teacher fa-3x mb-3 d-block"></i>
+                                            No teachers added yet. Add your first teacher above!
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subject Assignments Summary -->
+    {% if teacher_assignments %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Subject Assignment Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Teacher</th>
+                                    <th>Subject</th>
+                                    <th>Course</th>
+                                    <th>Year & Semester</th>
+                                    <th>Assigned On</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in teacher_assignments %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ assignment.teacher.name }}</strong><br>
+                                            <small class="text-muted">{{ assignment.teacher.employee_id }}</small>
+                                        </td>
+                                        <td>
+                                            <strong>{{ assignment.subject.code }}</strong><br>
+                                            <small>{{ assignment.subject.name }}</small>
+                                        </td>
+                                        <td>{{ assignment.subject.course.name }}</td>
+                                        <td>Year {{ assignment.subject.year }}, Sem {{ assignment.subject.semester }}</td>
+                                        <td>{{ assignment.assigned_at|date:"M d, Y" }}</td>
+                                        <td>
+                                            {% if assignment.is_active %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Inactive</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-danger" 
+                                                    onclick="removeAssignment('{{ assignment.id }}')">
+                                                <i class="fas fa-unlink"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function viewTeacherDetails(teacherId) {
+    // Implementation for viewing teacher details
+    alert('View details for teacher ID: ' + teacherId);
+}
+
+function editTeacher(teacherId) {
+    // Implementation for editing teacher
+    alert('Edit teacher ID: ' + teacherId);
+}
+
+function removeAssignment(assignmentId) {
+    if (confirm('Are you sure you want to remove this subject assignment?')) {
+        // Implementation for removing assignment
+        alert('Remove assignment ID: ' + assignmentId);
+    }
+}
+
+// Auto-uppercase employee ID
+document.getElementById('employee_id').addEventListener('input', function(e) {
+    e.target.value = e.target.value.toUpperCase();
+});
+</script>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.badge {
+    font-size: 0.7rem;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+</style>
+{% endblock %}

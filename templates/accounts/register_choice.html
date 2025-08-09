@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}Choose Registration Type - Enhanced Timetable System{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold mb-3">Choose Your Registration Type</h2>
+                <p class="lead text-muted">Select the type of account you want to create</p>
+            </div>
+
+            <div class="row g-4">
+                <!-- Student Registration -->
+                <div class="col-lg-4">
+                    <div class="card h-100 text-center shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="bg-primary bg-gradient rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                 style="width: 4rem; height: 4rem;">
+                                <i class="fas fa-user-graduate text-white fs-3"></i>
+                            </div>
+                            <h5 class="card-title">Student</h5>
+                            <p class="card-text">Access your personalized timetable, AI-powered study recommendations, and academic resources.</p>
+                            <ul class="list-unstyled text-start small text-muted mb-4">
+                                <li class="mb-1"><i class="fas fa-check text-success me-2"></i>Personal Dashboard</li>
+                                <li class="mb-1"><i class="fas fa-check text-success me-2"></i>AI Chat Assistant</li>
+                                <li class="mb-1"><i class="fas fa-check text-success me-2"></i>Study Recommendations</li>
+                                <li class="mb-1"><i class="fas fa-check text-success me-2"></i>Attendance Tracking</li>
+                            </ul>
+                        </div>
+                        <div class="card-footer border-0 bg-transparent">
+                            <a href="{% url 'accounts:student_register' %}" class="btn btn-primary w-100">
+                                <i class="fas fa-user-plus me-2"></i>Register as Student
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teacher Registration -->
+                <div class="col-lg-4">
+                    <div class="card h-100 text-center shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="bg-success bg-gradient rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                 style="width: 4rem; height: 4rem;">
+                                <i class="fas fa-chalkboard-teacher text-white fs-3"></i>
+                            </div>
+                            <h5 class="card-title">Teacher</h5>
+                            <p class="card-text">Manage your classes, track student attendance, and share study materials effectively.</p>
+                            <ul class="list-unstyled text-start small text-muted mb-4">
+                                <li class="mb-1"><i class="fas fa-check text-success me-2"></i>Class Management</li>
+                                <li class="mb-1"><i class="fas fa-check text-success me-2"></i>Attendance System</li>
+                                <li class="mb-1"><i class="fas fa-check text-success me-2"></i>Material Sharing</li>
+                                <li class="mb-1"><i class="fas fa-check text-success me-2"></i>Student Reports</li>
+                            </ul>
+                        </div>
+                        <div class="card-footer border-0 bg-transparent">
+                            <a href="{% url 'accounts:teacher_register' %}" class="btn btn-success w-100">
+                                <i class="fas fa-user-plus me-2"></i>Register as Teacher
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Registration -->
+                <div class="col-lg-4">
+                    <div class="card h-100 text-center shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="bg-warning bg-gradient rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                 style="width: 4rem; height: 4rem;">
+                                <i class="fas fa-user-shield text-white fs-3"></i>
+                            </div>
+                            <h5 class="card-title">Administrator</h5>
+                            <p class="card-text">Complete system management with advanced analytics, user control, and AI-powered insights.</p>
+                            <ul class="list-unstyled text-start small text-muted mb-4">
+                                <li class="mb-1"><i class="fas fa-check text-success me-2"></i>System Management</li>
+                                <li class="mb-1"><i class="fas fa-check text-success me-2"></i>User Control</li>
+                                <li class="mb-1"><i class="fas fa-check text-success me-2"></i>AI Analytics</li>
+                                <li class="mb-1"><i class="fas fa-check text-success me-2"></i>Timetable Generation</li>
+                            </ul>
+                        </div>
+                        <div class="card-footer border-0 bg-transparent">
+                            <a href="{% url 'accounts:admin_register' %}" class="btn btn-warning w-100">
+                                <i class="fas fa-user-plus me-2"></i>Register as Admin
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-5">
+                <p class="text-muted">
+                    Already have an account? 
+                    <a href="{% url 'accounts:login' %}" class="text-decoration-none">
+                        <i class="fas fa-sign-in-alt me-1"></i>Login here
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

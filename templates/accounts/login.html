@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - Enhanced Timetable System{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-sign-in-alt fa-3x text-primary mb-3"></i>
+                        <h4 class="fw-bold">Login to Your Account</h4>
+                        <p class="text-muted">Enter your credentials to continue</p>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="user_type" class="form-label">I am a:</label>
+                            <select class="form-select" name="user_type" id="user_type" required>
+                                <option value="student">Student</option>
+                                <option value="teacher">Teacher</option>
+                                <option value="admin">Administrator</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="user_id" class="form-label">
+                                <span id="user_id_label">Roll Number</span>
+                            </label>
+                            <input type="text" class="form-control" name="user_id" id="user_id" 
+                                   placeholder="Enter your roll number" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" name="password" id="password" 
+                                   placeholder="Enter your password" required>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-sign-in-alt me-2"></i>Login
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div class="text-center mt-4">
+                        <a href="{% url 'accounts:forgot_password' %}" class="text-decoration-none">
+                            Forgot your password?
+                        </a>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="text-center">
+                        <p class="mb-0">Don't have an account?</p>
+                        <a href="{% url 'accounts:register_choice' %}" class="btn btn-outline-primary btn-sm mt-2">
+                            <i class="fas fa-user-plus me-1"></i>Register Now
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('user_type').addEventListener('change', function() {
+    const userIdLabel = document.getElementById('user_id_label');
+    const userIdInput = document.getElementById('user_id');
+    
+    if (this.value === 'admin') {
+        userIdLabel.textContent = 'Admin ID';
+        userIdInput.placeholder = 'Enter your admin ID';
+    } else if (this.value === 'teacher') {
+        userIdLabel.textContent = 'Email / Employee ID';
+        userIdInput.placeholder = 'Enter your email or employee ID';
+    } else {
+        userIdLabel.textContent = 'Roll Number';
+        userIdInput.placeholder = 'Enter your roll number';
+    }
+});
+</script>
+{% endblock %}

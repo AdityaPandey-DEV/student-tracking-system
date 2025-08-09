@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Dashboard - Enhanced Timetable System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Welcome Header -->
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold mb-1">Welcome back, {{ student.user.get_full_name }}!</h2>
+                    <p class="text-muted mb-0">
+                        <i class="fas fa-graduation-cap me-1"></i>
+                        {{ student.course }} Year {{ student.year }} Section {{ student.section }}
+                    </p>
+                </div>
+                <div class="text-end">
+                    <p class="mb-0 text-muted">{{ today|date:"l, F j, Y" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- AI Summary Card -->
+    {% if ai_summary %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fas fa-robot fa-2x"></i>
+                        </div>
+                        <div>
+                            <h6 class="card-title mb-1">AI Schedule Summary</h6>
+                            <p class="card-text mb-0">{{ ai_summary }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="row g-4">
+        <!-- Today's Classes -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="fas fa-calendar-day me-2"></i>Today's Classes</h6>
+                    <span class="badge bg-primary">{{ today_classes.count }} classes</span>
+                </div>
+                <div class="card-body">
+                    {% if today_classes %}
+                        {% for class in today_classes %}
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>
+                                <h6 class="mb-1">{{ class.subject.name }}</h6>
+                                <small class="text-muted">
+                                    <i class="fas fa-user me-1"></i>{{ class.teacher.name }}
+                                    <i class="fas fa-map-marker-alt ms-2 me-1"></i>{{ class.room.room_number }}
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold">{{ class.time_slot.start_time|time:"g:i A" }}</div>
+                                <small class="text-muted">Period {{ class.time_slot.period_number }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No classes scheduled for today</p>
+                            <a href="{% url 'accounts:student_timetable' %}" class="btn btn-outline-primary btn-sm">
+                                View Full Timetable
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{% url 'accounts:student_timetable' %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-calendar me-1"></i>View Full Timetable
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Upcoming Classes -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-clock me-2"></i>Upcoming Classes</h6>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_classes %}
+                        {% for date, class in upcoming_classes %}
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>
+                                <h6 class="mb-1">{{ class.subject.name }}</h6>
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar me-1"></i>{{ date|date:"M j" }}
+                                    <i class="fas fa-user ms-2 me-1"></i>{{ class.teacher.name }}
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold">{{ class.time_slot.start_time|time:"g:i A" }}</div>
+                                <small class="text-muted">{{ class.room.room_number }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-check fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No upcoming classes in next 3 days</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- AI Recommendations -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="fas fa-lightbulb me-2"></i>AI Recommendations</h6>
+                    {% if recommendations %}
+                    <span class="badge bg-warning">{{ recommendations.count }} new</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if recommendations %}
+                        {% for rec in recommendations %}
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <h6 class="alert-heading">{{ rec.title }}</h6>
+                            <p class="mb-0 small">{{ rec.description|truncatewords:20 }}</p>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        {% endfor %}
+                        <a href="{% url 'accounts:student_recommendations' %}" class="btn btn-outline-primary btn-sm">
+                            View All Recommendations
+                        </a>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-brain fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No new recommendations</p>
+                            <form method="post" action="{% url 'accounts:student_recommendations' %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="generate">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">
+                                    Generate Recommendations
+                                </button>
+                            </form>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-rocket me-2"></i>Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-md-2 col-6">
+                            <a href="{% url 'accounts:student_timetable' %}" class="btn btn-outline-primary btn-sm w-100">
+                                <i class="fas fa-calendar-alt d-block mb-1"></i>
+                                My Timetable
+                            </a>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <a href="{% url 'accounts:student_subjects' %}" class="btn btn-outline-success btn-sm w-100">
+                                <i class="fas fa-book d-block mb-1"></i>
+                                My Subjects
+                            </a>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <a href="{% url 'accounts:student_attendance' %}" class="btn btn-outline-warning btn-sm w-100">
+                                <i class="fas fa-chart-bar d-block mb-1"></i>
+                                Attendance
+                            </a>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <a href="{% url 'accounts:student_ai_chat' %}" class="btn btn-outline-secondary btn-sm w-100">
+                                <i class="fas fa-robot d-block mb-1"></i>
+                                AI Assistant
+                            </a>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <a href="{% url 'accounts:student_recommendations' %}" class="btn btn-outline-dark btn-sm w-100">
+                                <i class="fas fa-lightbulb d-block mb-1"></i>
+                                AI Recommendations
+                            </a>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <a href="{% url 'accounts:profile' %}" class="btn btn-outline-info btn-sm w-100">
+                                <i class="fas fa-user d-block mb-1"></i>
+                                Profile
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Announcements -->
+    {% if announcements %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-bullhorn me-2"></i>Recent Announcements</h6>
+                </div>
+                <div class="card-body">
+                    {% for announcement in announcements %}
+                    <div class="alert alert-{% if announcement.is_urgent %}danger{% else %}info{% endif %} mb-2" role="alert">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="alert-heading mb-1">
+                                    {% if announcement.is_urgent %}<i class="fas fa-exclamation-triangle me-1"></i>{% endif %}
+                                    {{ announcement.title }}
+                                </h6>
+                                <p class="mb-1">{{ announcement.content|truncatewords:30 }}</p>
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>{{ announcement.created_at|timesince }} ago
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

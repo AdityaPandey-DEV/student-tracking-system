@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block title %}My Classes - Teacher Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">My Classes</h1>
+                    <p class="text-muted">{{ teacher.name }} - All assigned classes</p>
+                </div>
+                <div>
+                    <a href="{% url 'accounts:teacher_dashboard' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Classes Grid -->
+    <div class="row">
+        {% for class_key, class_data in classes.items %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-users me-2"></i>
+                            {{ class_data.course }}-{{ class_data.year }}-{{ class_data.section }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <h6 class="text-muted mb-2">Subjects Teaching:</h6>
+                            {% for subject in class_data.subjects %}
+                                <span class="badge bg-secondary me-1 mb-1">{{ subject.name }}</span>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6 class="text-muted mb-2">Class Statistics:</h6>
+                            <div class="d-flex justify-content-between">
+                                <span><i class="fas fa-user-graduate me-1"></i>Students:</span>
+                                <strong>{{ class_data.student_count }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span><i class="fas fa-calendar me-1"></i>Weekly Classes:</span>
+                                <strong>{{ class_data.entries|length }}</strong>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <h6 class="text-muted mb-2">Schedule:</h6>
+                            {% for entry in class_data.entries %}
+                                <div class="small mb-1">
+                                    <span class="fw-bold">{{ entry.subject.name }}</span><br>
+                                    <i class="fas fa-clock me-1"></i>
+                                    {% if entry.day_of_week == 0 %}Monday{% elif entry.day_of_week == 1 %}Tuesday{% elif entry.day_of_week == 2 %}Wednesday{% elif entry.day_of_week == 3 %}Thursday{% elif entry.day_of_week == 4 %}Friday{% elif entry.day_of_week == 5 %}Saturday{% endif %}
+                                    {{ entry.time_slot.start_time|time:"g:i A" }}
+                                    <i class="fas fa-map-marker-alt ms-2 me-1"></i>{{ entry.room.room_number }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="btn-group w-100" role="group">
+                            <a href="{% url 'accounts:mark_attendance' %}?class_filter={{ class_data.course }}-{{ class_data.year }}-{{ class_data.section }}" 
+                               class="btn btn-outline-warning btn-sm">
+                                <i class="fas fa-check-square me-1"></i>Attendance
+                            </a>
+                            <a href="{% url 'accounts:teacher_students' %}?course={{ class_data.course }}&year={{ class_data.year }}&section={{ class_data.section }}" 
+                               class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-users me-1"></i>Students
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-chalkboard fa-3x text-muted mb-3"></i>
+                        <h5>No Classes Assigned</h5>
+                        <p class="text-muted">You haven't been assigned to any classes yet.</p>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:teacher_timetable' %}" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="fas fa-calendar-alt me-2"></i>View Full Timetable
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:mark_attendance' %}" class="btn btn-outline-warning w-100 mb-2">
+                                <i class="fas fa-check-square me-2"></i>Mark Attendance
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:teacher_students' %}" class="btn btn-outline-info w-100 mb-2">
+                                <i class="fas fa-user-graduate me-2"></i>All Students
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:attendance_reports' %}" class="btn btn-outline-danger w-100 mb-2">
+                                <i class="fas fa-chart-bar me-2"></i>Reports
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    transition: transform 0.2s;
+}
+.card:hover {
+    transform: translateY(-2px);
+}
+</style>
+{% endblock %}

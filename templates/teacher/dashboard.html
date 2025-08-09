@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+
+{% block title %}Teacher Dashboard - Enhanced Timetable System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">Teacher Dashboard</h1>
+                    <p class="text-muted">Welcome back, {{ teacher.name }}</p>
+                </div>
+                <div>
+                    <span class="badge bg-success">{{ teacher.employee_id }}</span>
+                    <span class="badge bg-secondary ms-2">{{ teacher.department }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ total_students }}</h4>
+                            <p class="card-text">Total Students</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-user-graduate fa-2x"></i>
+                        </div>
+                    </div>
+                    <small>Across all your classes</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ teacher_subjects.count }}</h4>
+                            <p class="card-text">Assigned Subjects</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-book fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ today_classes.count }}</h4>
+                            <p class="card-text">Today's Classes</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-calendar-day fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ monthly_attendance }}</h4>
+                            <p class="card-text">Attendance Marked</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-check-circle fa-2x"></i>
+                        </div>
+                    </div>
+                    <small>This month</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Today's Classes -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Today's Schedule</h5>
+                </div>
+                <div class="card-body">
+                    {% if today_classes %}
+                        {% for class in today_classes %}
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <strong>{{ class.subject.name }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ class.course }}-{{ class.year }}-{{ class.section }}</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-primary">{{ class.time_slot.start_time|time:"g:i A" }}</span>
+                                    <br>
+                                    <small class="text-muted">{{ class.room.room_number }}</small>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No classes scheduled for today.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Announcements -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">My Recent Announcements</h5>
+                    <a href="{% url 'accounts:teacher_announcements' %}" class="btn btn-sm btn-primary">Manage</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_announcements %}
+                        {% for announcement in recent_announcements %}
+                            <div class="border-bottom pb-2 mb-2">
+                                <h6 class="mb-1">{{ announcement.title }}</h6>
+                                <p class="mb-1 text-muted small">{{ announcement.content|truncatewords:15 }}</p>
+                                <small class="text-muted">
+                                    {{ announcement.created_at|date:"M d, Y" }} • {{ announcement.target_audience }}
+                                    {% if announcement.is_urgent %}
+                                        <span class="badge bg-danger ms-1">Urgent</span>
+                                    {% endif %}
+                                </small>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No announcements posted yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <a href="{% url 'accounts:teacher_timetable' %}" class="btn btn-outline-primary btn-lg w-100 mb-2">
+                                <i class="fas fa-calendar-alt d-block mb-1"></i>
+                                My Timetable
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{% url 'accounts:teacher_classes' %}" class="btn btn-outline-success btn-lg w-100 mb-2">
+                                <i class="fas fa-chalkboard d-block mb-1"></i>
+                                My Classes
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{% url 'accounts:teacher_students' %}" class="btn btn-outline-info btn-lg w-100 mb-2">
+                                <i class="fas fa-user-graduate d-block mb-1"></i>
+                                My Students
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{% url 'accounts:mark_attendance' %}" class="btn btn-outline-warning btn-lg w-100 mb-2">
+                                <i class="fas fa-check-square d-block mb-1"></i>
+                                Mark Attendance
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{% url 'accounts:manage_materials' %}" class="btn btn-outline-secondary btn-lg w-100 mb-2">
+                                <i class="fas fa-book-open d-block mb-1"></i>
+                                Study Materials
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{% url 'accounts:teacher_announcements' %}" class="btn btn-outline-dark btn-lg w-100 mb-2">
+                                <i class="fas fa-bullhorn d-block mb-1"></i>
+                                Announcements
+                            </a>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-2">
+                            <a href="{% url 'accounts:attendance_reports' %}" class="btn btn-outline-danger btn-lg w-100 mb-2">
+                                <i class="fas fa-chart-bar d-block mb-1"></i>
+                                Attendance Reports
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{% url 'accounts:profile' %}" class="btn btn-outline-primary btn-lg w-100 mb-2">
+                                <i class="fas fa-user d-block mb-1"></i>
+                                Profile
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upcoming Classes -->
+    {% if upcoming_classes %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Upcoming Classes</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for class in upcoming_classes %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card border">
+                                <div class="card-body">
+                                    <h6 class="card-title">{{ class.subject.name }}</h6>
+                                    <p class="card-text small">
+                                        <i class="fas fa-users me-1"></i>{{ class.course }}-{{ class.year }}-{{ class.section }}<br>
+                                        <i class="fas fa-map-marker-alt me-1"></i>{{ class.room.room_number }}<br>
+                                        <i class="fas fa-clock me-1"></i>{{ class.time_slot.start_time|time:"g:i A" }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Custom CSS for dashboard -->
+<style>
+    .card {
+        border: none;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    
+    .btn-outline-primary:hover,
+    .btn-outline-success:hover,
+    .btn-outline-info:hover,
+    .btn-outline-warning:hover,
+    .btn-outline-secondary:hover,
+    .btn-outline-dark:hover,
+    .btn-outline-danger:hover {
+        transform: translateY(-2px);
+        transition: all 0.2s;
+    }
+</style>
+{% endblock %}

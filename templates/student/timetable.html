@@ -1,0 +1,396 @@
+{% extends 'base.html' %}
+
+{% block title %}My Timetable - Enhanced Timetable System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-calendar-alt me-2"></i>My Timetable
+                    </h1>
+                    <p class="text-muted">{{ student.course }} Year {{ student.year }} Section {{ student.section }}</p>
+                </div>
+                <div>
+                    <a href="{% url 'accounts:student_dashboard' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timetable Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="card-title mb-0">{{ timetable_entries.count }}</h4>
+                            <p class="card-text mb-0">Total Classes</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-calendar-week fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="card-title mb-0">{{ periods|length }}</h4>
+                            <p class="card-text mb-0">Daily Periods</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="card-title mb-0">{{ days|length }}</h4>
+                            <p class="card-text mb-0">Days/Week</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-calendar-day fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="card-title mb-0">
+                                {% now "w" as current_day %}
+                                {% for entry in timetable_entries %}
+                                    {% if entry.day_of_week == current_day|add:"-1" %}{{ forloop.counter0|add:"1" }}{% endif %}
+                                {% endfor %}
+                                {% empty %}0{% endfor %}
+                            </h4>
+                            <p class="card-text mb-0">Today's Classes</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-chalkboard fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timetable Grid -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Weekly Schedule</h5>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="printTimetable()">
+                            <i class="fas fa-print"></i> Print
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-success" onclick="exportTimetable()">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered timetable-grid mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th class="text-center" style="width: 120px;">Time</th>
+                                    {% for day in days %}
+                                        <th class="text-center">{{ day }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for period in periods %}
+                                    <tr>
+                                        <td class="text-center fw-bold time-slot">
+                                            <div class="period-number">P{{ period }}</div>
+                                            <div class="time-range">
+                                                <!-- Time would be fetched from TimeSlot model -->
+                                                {% for entry in timetable_entries %}
+                                                    {% if entry.time_slot.period_number == period %}
+                                                        {{ entry.time_slot.start_time|time:"H:i" }}-{{ entry.time_slot.end_time|time:"H:i" }}
+                                                        {% break %}
+                                                    {% endif %}
+                                                {% empty %}
+                                                    {{ period }}:00
+                                                {% endfor %}
+                                            </div>
+                                        </td>
+                                        {% for day in days %}
+                                            {% with day_index=forloop.counter0 %}
+                                                <td class="timetable-cell" data-day="{{ day_index }}" data-period="{{ period }}">
+                                                    {% for entry in timetable_entries %}
+                                                        {% if entry.day_of_week == day_index and entry.time_slot.period_number == period %}
+                                                            <div class="class-card">
+                                                                <div class="subject-name">{{ entry.subject.code }}</div>
+                                                                <div class="subject-full-name">{{ entry.subject.name|truncatechars:20 }}</div>
+                                                                <div class="teacher-name">
+                                                                    <i class="fas fa-user me-1"></i>{{ entry.teacher.name|truncatechars:15 }}
+                                                                </div>
+                                                                <div class="room-info">
+                                                                    <i class="fas fa-map-marker-alt me-1"></i>{{ entry.room.room_number }}
+                                                                </div>
+                                                            </div>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </td>
+                                            {% endwith %}
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subject Legend -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Subject Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% regroup timetable_entries by subject as subject_groups %}
+                        {% for subject_group in subject_groups %}
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="subject-info-card">
+                                    <div class="d-flex align-items-center">
+                                        <div class="subject-color me-3" style="background-color: {% cycle '#007bff' '#28a745' '#ffc107' '#dc3545' '#6f42c1' '#fd7e14' %}; width: 20px; height: 20px; border-radius: 3px;"></div>
+                                        <div>
+                                            <strong>{{ subject_group.grouper.code }}</strong> - {{ subject_group.grouper.name }}
+                                            <br>
+                                            <small class="text-muted">
+                                                Credits: {{ subject_group.grouper.credits }} | 
+                                                {% with subject_group.list|first as first_entry %}
+                                                    Teacher: {{ first_entry.teacher.name }}
+                                                {% endwith %}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:student_subjects' %}" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="fas fa-book d-block mb-1"></i>
+                                View My Subjects
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:student_attendance' %}" class="btn btn-outline-success w-100 mb-2">
+                                <i class="fas fa-chart-bar d-block mb-1"></i>
+                                Attendance Report
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:student_ai_chat' %}" class="btn btn-outline-info w-100 mb-2">
+                                <i class="fas fa-robot d-block mb-1"></i>
+                                AI Assistant
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:student_recommendations' %}" class="btn btn-outline-warning w-100 mb-2">
+                                <i class="fas fa-lightbulb d-block mb-1"></i>
+                                Study Tips
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function printTimetable() {
+    window.print();
+}
+
+function exportTimetable() {
+    // This would implement export functionality
+    alert('Export functionality would be implemented here');
+}
+
+// Highlight current day and time
+document.addEventListener('DOMContentLoaded', function() {
+    const now = new Date();
+    const currentDay = now.getDay(); // Sunday = 0, Monday = 1, etc.
+    const currentHour = now.getHours();
+    
+    // Highlight current day column
+    if (currentDay >= 1 && currentDay <= 6) { // Monday to Saturday
+        const dayIndex = currentDay - 1; // Convert to 0-based index
+        const cells = document.querySelectorAll(`[data-day="${dayIndex}"]`);
+        cells.forEach(cell => {
+            cell.classList.add('current-day');
+        });
+    }
+    
+    // Add current time indicator
+    const timeIndicator = document.createElement('div');
+    timeIndicator.className = 'current-time-indicator';
+    timeIndicator.innerHTML = `<i class="fas fa-clock me-1"></i>Current Time: ${now.toLocaleTimeString()}`;
+    document.querySelector('.card-header').appendChild(timeIndicator);
+});
+</script>
+
+<style>
+.timetable-grid {
+    font-size: 0.9rem;
+}
+
+.timetable-cell {
+    height: 120px;
+    vertical-align: top;
+    padding: 8px !important;
+    position: relative;
+}
+
+.time-slot {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.period-number {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #495057;
+}
+
+.time-range {
+    font-size: 0.8em;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+.class-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 8px;
+    border-radius: 6px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.class-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.subject-name {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 4px;
+}
+
+.subject-full-name {
+    font-size: 0.8em;
+    margin-bottom: 6px;
+    opacity: 0.9;
+}
+
+.teacher-name, .room-info {
+    font-size: 0.75em;
+    margin-bottom: 2px;
+    opacity: 0.8;
+}
+
+.current-day {
+    background-color: #fff3cd !important;
+}
+
+.subject-info-card {
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    background-color: #f8f9fa;
+}
+
+.current-time-indicator {
+    position: absolute;
+    right: 15px;
+    top: 15px;
+    background: #28a745;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.8em;
+}
+
+@media (max-width: 768px) {
+    .timetable-cell {
+        height: 80px;
+        font-size: 0.7rem;
+    }
+    
+    .class-card {
+        padding: 4px;
+    }
+    
+    .subject-name {
+        font-size: 0.9em;
+    }
+}
+
+@media print {
+    .btn, .current-time-indicator {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .timetable-grid {
+        font-size: 0.8rem;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+
+{% block title %}Welcome - Enhanced Timetable System{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="bg-primary text-white py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-4">Enhanced Timetable System</h1>
+                <p class="lead mb-4">
+                    AI-powered academic scheduling and management platform for educational institutions.
+                    Streamline your academic workflow with intelligent timetable generation, personalized recommendations, and comprehensive analytics.
+                </p>
+                <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                    <a href="{% url 'accounts:login' %}" class="btn btn-light btn-lg px-4 me-md-2">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login
+                    </a>
+                    <a href="{% url 'accounts:register_choice' %}" class="btn btn-outline-light btn-lg px-4">
+                        <i class="fas fa-user-plus me-2"></i>Register
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="text-center">
+                    <i class="fas fa-calendar-alt" style="font-size: 12rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-12 text-center mb-5">
+                <h2 class="fw-bold mb-3">Powerful Features</h2>
+                <p class="lead text-muted">Everything you need for modern academic management</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <!-- Student Features -->
+            <div class="col-lg-4">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <div class="bg-primary bg-gradient rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                             style="width: 3rem; height: 3rem;">
+                            <i class="fas fa-user-graduate text-white"></i>
+                        </div>
+                        <h5 class="card-title">For Students</h5>
+                        <ul class="list-unstyled text-start">
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>AI-powered personalized dashboard</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Smart study recommendations</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Interactive AI chatbot assistant</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Real-time timetable updates</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Natural language search</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Admin Features -->
+            <div class="col-lg-4">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <div class="bg-success bg-gradient rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                             style="width: 3rem; height: 3rem;">
+                            <i class="fas fa-user-shield text-white"></i>
+                        </div>
+                        <h5 class="card-title">For Administrators</h5>
+                        <ul class="list-unstyled text-start">
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Comprehensive course management</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>AI-assisted timetable generation</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Teacher and student management</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Advanced analytics dashboard</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Automated conflict resolution</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- AI Features -->
+            <div class="col-lg-4">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <div class="bg-warning bg-gradient rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                             style="width: 3rem; height: 3rem;">
+                            <i class="fas fa-robot text-white"></i>
+                        </div>
+                        <h5 class="card-title">AI-Powered Intelligence</h5>
+                        <ul class="list-unstyled text-start">
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Automatic timetable optimization</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Performance prediction analytics</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Smart notification system</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Attendance trend analysis</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Resource optimization suggestions</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row">
+            <div class="col-12 text-center mb-5">
+                <h2 class="fw-bold mb-3">How It Works</h2>
+                <p class="lead text-muted">Get started in three simple steps</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-lg-4 text-center">
+                <div class="mb-3">
+                    <div class="bg-primary bg-gradient rounded-circle d-inline-flex align-items-center justify-content-center" 
+                         style="width: 4rem; height: 4rem;">
+                        <span class="text-white fw-bold fs-4">1</span>
+                    </div>
+                </div>
+                <h5>Register Your Account</h5>
+                <p class="text-muted">Choose between student or administrator account based on your role in the institution.</p>
+            </div>
+            
+            <div class="col-lg-4 text-center">
+                <div class="mb-3">
+                    <div class="bg-primary bg-gradient rounded-circle d-inline-flex align-items-center justify-content-center" 
+                         style="width: 4rem; height: 4rem;">
+                        <span class="text-white fw-bold fs-4">2</span>
+                    </div>
+                </div>
+                <h5>Set Up Your Profile</h5>
+                <p class="text-muted">Complete your profile with course details, subjects, and preferences for personalized experience.</p>
+            </div>
+            
+            <div class="col-lg-4 text-center">
+                <div class="mb-3">
+                    <div class="bg-primary bg-gradient rounded-circle d-inline-flex align-items-center justify-content-center" 
+                         style="width: 4rem; height: 4rem;">
+                        <span class="text-white fw-bold fs-4">3</span>
+                    </div>
+                </div>
+                <h5>Start Managing</h5>
+                <p class="text-muted">Access your dashboard and begin using AI-powered features for efficient academic management.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="py-5 bg-primary text-white">
+    <div class="container text-center">
+        <h2 class="fw-bold mb-3">Ready to Transform Your Academic Experience?</h2>
+        <p class="lead mb-4">Join thousands of students and educators using our AI-powered platform</p>
+        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+            <a href="{% url 'accounts:register_choice' %}" class="btn btn-light btn-lg px-4 me-md-2">
+                <i class="fas fa-rocket me-2"></i>Get Started Today
+            </a>
+            <a href="#features" class="btn btn-outline-light btn-lg px-4">
+                <i class="fas fa-info-circle me-2"></i>Learn More
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}
