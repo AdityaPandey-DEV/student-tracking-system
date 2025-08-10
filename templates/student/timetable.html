@@ -78,8 +78,9 @@
                                 {% now "w" as current_day %}
                                 {% for entry in timetable_entries %}
                                     {% if entry.day_of_week == current_day|add:"-1" %}{{ forloop.counter0|add:"1" }}{% endif %}
+                                {% empty %}
+                                    0
                                 {% endfor %}
-                                {% empty %}0{% endfor %}
                             </h4>
                             <p class="card-text mb-0">Today's Classes</p>
                         </div>
@@ -92,7 +93,7 @@
         </div>
     </div>
 
-    <!-- Timetable Grid -->
+    <!-- Traditional Timetable Grid -->
     <div class="row">
         <div class="col-12">
             <div class="card">
@@ -112,41 +113,44 @@
                         <table class="table table-bordered timetable-grid mb-0">
                             <thead class="table-dark">
                                 <tr>
-                                    <th class="text-center" style="width: 120px;">Time</th>
+                                    <th class="text-center time-header">Time</th>
                                     {% for day in days %}
-                                        <th class="text-center">{{ day }}</th>
+                                        <th class="text-center day-header">{{ day }}</th>
                                     {% endfor %}
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for period in periods %}
                                     <tr>
-                                        <td class="text-center fw-bold time-slot">
-                                            <div class="period-number">P{{ period }}</div>
-                                            <div class="time-range">
-                                                <!-- Time would be fetched from TimeSlot model -->
-                                                {% for entry in timetable_entries %}
-                                                    {% if entry.time_slot.period_number == period %}
-                                                        {{ entry.time_slot.start_time|time:"H:i" }}-{{ entry.time_slot.end_time|time:"H:i" }}
-                                                        {% break %}
-                                                    {% endif %}
-                                                {% empty %}
-                                                    {{ period }}:00
-                                                {% endfor %}
+                                        <td class="time-slot text-center">
+                                            <div class="period-info">
+                                                <div class="period-number">P{{ period }}</div>
+                                                <div class="time-range">
+                                                    {% regroup timetable_entries by time_slot.period_number as period_groups %}
+                                                    {% for period_group in period_groups %}
+                                                        {% if period_group.grouper == period %}
+                                                            {% with period_group.list|first as first_entry %}
+                                                                {{ first_entry.time_slot.start_time|time:"H:i" }}<br>{{ first_entry.time_slot.end_time|time:"H:i" }}
+                                                            {% endwith %}
+                                                        {% endif %}
+                                                    {% empty %}
+                                                        {{ period }}:00<br>{{ period|add:1 }}:00
+                                                    {% endfor %}
+                                                </div>
                                             </div>
                                         </td>
                                         {% for day in days %}
                                             {% with day_index=forloop.counter0 %}
-                                                <td class="timetable-cell" data-day="{{ day_index }}" data-period="{{ period }}">
+                                                <td class="subject-cell" data-day="{{ day_index }}" data-period="{{ period }}">
                                                     {% for entry in timetable_entries %}
                                                         {% if entry.day_of_week == day_index and entry.time_slot.period_number == period %}
-                                                            <div class="class-card">
-                                                                <div class="subject-name">{{ entry.subject.code }}</div>
-                                                                <div class="subject-full-name">{{ entry.subject.name|truncatechars:20 }}</div>
+                                                            <div class="subject-info">
+                                                                <div class="subject-code">{{ entry.subject.code }}</div>
+                                                                <div class="subject-name">{{ entry.subject.name|truncatechars:20 }}</div>
                                                                 <div class="teacher-name">
                                                                     <i class="fas fa-user me-1"></i>{{ entry.teacher.name|truncatechars:15 }}
                                                                 </div>
-                                                                <div class="room-info">
+                                                                <div class="room-number">
                                                                     <i class="fas fa-map-marker-alt me-1"></i>{{ entry.room.room_number }}
                                                                 </div>
                                                             </div>
@@ -252,11 +256,10 @@ function exportTimetable() {
     alert('Export functionality would be implemented here');
 }
 
-// Highlight current day and time
+// Handle empty slots and current day highlighting
 document.addEventListener('DOMContentLoaded', function() {
     const now = new Date();
     const currentDay = now.getDay(); // Sunday = 0, Monday = 1, etc.
-    const currentHour = now.getHours();
     
     // Highlight current day column
     if (currentDay >= 1 && currentDay <= 6) { // Monday to Saturday
@@ -265,7 +268,23 @@ document.addEventListener('DOMContentLoaded', function() {
         cells.forEach(cell => {
             cell.classList.add('current-day');
         });
+        
+        // Also highlight the day header
+        const dayHeaders = document.querySelectorAll('.day-header');
+        if (dayHeaders[dayIndex]) {
+            dayHeaders[dayIndex].classList.add('current-day-header');
+        }
     }
+    
+    // Add empty period indicators for cells without subjects
+    const subjectCells = document.querySelectorAll('.subject-cell');
+    subjectCells.forEach(cell => {
+        const hasSubject = cell.querySelector('.subject-info');
+        if (!hasSubject) {
+            cell.innerHTML = '<div class="empty-period"><span class="text-muted">Free Period</span></div>';
+            cell.classList.add('empty-cell');
+        }
+    });
     
     // Add current time indicator
     const timeIndicator = document.createElement('div');
@@ -276,82 +295,150 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
+/* Traditional Timetable Grid */
 .timetable-grid {
+    border-collapse: collapse;
     font-size: 0.9rem;
 }
 
-.timetable-cell {
-    height: 120px;
-    vertical-align: top;
-    padding: 8px !important;
-    position: relative;
+.timetable-grid th,
+.timetable-grid td {
+    border: 2px solid #dee2e6;
+    vertical-align: middle;
+    text-align: center;
+}
+
+/* Time Column */
+.time-header {
+    background: #343a40 !important;
+    color: white !important;
+    width: 120px;
+    font-weight: bold;
 }
 
 .time-slot {
-    background-color: #f8f9fa;
+    background: #f8f9fa;
     font-weight: 600;
+    width: 120px;
+    padding: 15px 8px;
+}
+
+.period-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .period-number {
     font-size: 1.1em;
     font-weight: bold;
     color: #495057;
+    margin-bottom: 5px;
 }
 
 .time-range {
-    font-size: 0.8em;
+    font-size: 0.85em;
     color: #6c757d;
-    margin-top: 2px;
+    line-height: 1.2;
 }
 
-.class-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+/* Day Headers */
+.day-header {
+    background: #343a40 !important;
+    color: white !important;
+    font-weight: bold;
+    padding: 15px 8px;
+    position: relative;
+}
+
+.current-day-header {
+    background: #ffc107 !important;
+    color: #000 !important;
+}
+
+/* Subject Cells */
+.subject-cell {
+    height: 100px;
+    width: calc((100% - 120px) / 6);
     padding: 8px;
-    border-radius: 6px;
+    position: relative;
+    background: white;
+}
+
+.subject-info {
     height: 100%;
+    background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
+    color: white;
+    border-radius: 6px;
+    padding: 8px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     text-align: center;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transition: transform 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.class-card:hover {
+.subject-info:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
-.subject-name {
+.subject-code {
     font-weight: bold;
-    font-size: 1.1em;
+    font-size: 1em;
     margin-bottom: 4px;
 }
 
-.subject-full-name {
+.subject-name {
     font-size: 0.8em;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     opacity: 0.9;
+    line-height: 1.1;
 }
 
-.teacher-name, .room-info {
-    font-size: 0.75em;
+.teacher-name,
+.room-number {
+    font-size: 0.7em;
     margin-bottom: 2px;
     opacity: 0.8;
 }
 
-.current-day {
-    background-color: #fff3cd !important;
+/* Empty Period */
+.empty-period {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    border-radius: 6px;
+    color: #6c757d;
 }
 
+.empty-cell {
+    background: #fafafa;
+}
+
+/* Current Day Highlighting */
+.current-day {
+    background: #fff3cd !important;
+}
+
+/* Subject Legend */
 .subject-info-card {
-    padding: 10px;
+    padding: 12px;
     border: 1px solid #dee2e6;
     border-radius: 6px;
     background-color: #f8f9fa;
+    transition: box-shadow 0.2s;
 }
 
+.subject-info-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Current Time Indicator */
 .current-time-indicator {
     position: absolute;
     right: 15px;
@@ -361,23 +448,51 @@ document.addEventListener('DOMContentLoaded', function() {
     padding: 5px 10px;
     border-radius: 15px;
     font-size: 0.8em;
+    z-index: 1000;
 }
 
+/* Responsive Design */
 @media (max-width: 768px) {
-    .timetable-cell {
-        height: 80px;
-        font-size: 0.7rem;
+    .timetable-grid {
+        font-size: 0.75rem;
     }
     
-    .class-card {
+    .subject-cell {
+        height: 80px;
         padding: 4px;
     }
     
-    .subject-name {
+    .subject-info {
+        padding: 4px;
+    }
+    
+    .subject-code {
         font-size: 0.9em;
+    }
+    
+    .subject-name {
+        font-size: 0.7em;
+    }
+    
+    .teacher-name,
+    .room-number {
+        font-size: 0.6em;
+    }
+    
+    .time-slot {
+        padding: 8px 4px;
+    }
+    
+    .period-number {
+        font-size: 0.9em;
+    }
+    
+    .time-range {
+        font-size: 0.7em;
     }
 }
 
+/* Print Styles */
 @media print {
     .btn, .current-time-indicator {
         display: none !important;
@@ -391,6 +506,25 @@ document.addEventListener('DOMContentLoaded', function() {
     .timetable-grid {
         font-size: 0.8rem;
     }
+    
+    .subject-info {
+        background: #e9ecef !important;
+        color: #000 !important;
+        border: 1px solid #000 !important;
+    }
+}
+
+/* Card Styling */
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid #dee2e6;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    position: relative;
 }
 </style>
+
 {% endblock %}

@@ -23,9 +23,18 @@ class AIService:
     
     def __init__(self):
         self.client = None
-        if OPENAI_AVAILABLE and hasattr(settings, 'OPENAI_API_KEY') and settings.OPENAI_API_KEY:
-            self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        self.mock_mode = settings.DEBUG or not OPENAI_AVAILABLE or not hasattr(settings, 'OPENAI_API_KEY') or not settings.OPENAI_API_KEY
+        self.mock_mode = True
+        
+        if (OPENAI_AVAILABLE and 
+            hasattr(settings, 'OPENAI_API_KEY') and 
+            settings.OPENAI_API_KEY and 
+            settings.OPENAI_API_KEY != ''):
+            try:
+                self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+                self.mock_mode = settings.DEBUG
+            except Exception as e:
+                logger.warning(f"Failed to initialize OpenAI client: {str(e)}")
+                self.mock_mode = True
     
     def chat_with_ai(self, message: str, context: Dict = None) -> str:
         """Chat with AI for student queries."""

@@ -203,14 +203,27 @@ def teacher_students(request):
     year = request.GET.get('year', '')
     section = request.GET.get('section', '')
     
-    # Get students enrolled in teacher's subjects
-    students_query = StudentProfile.objects.filter(
-        enrollment__subject__teachersubject__teacher=teacher,
-        enrollment__subject__teachersubject__is_active=True,
-        enrollment__is_active=True
-    ).select_related('user').distinct()
+    # Enhanced approach: Get students through multiple methods to ensure comprehensive coverage
+    
+    # Method 1: Students enrolled in subjects taught by this teacher
+    enrolled_students = StudentProfile.objects.filter(
+        enrollments__subject__teachersubject__teacher=teacher,
+        enrollments__subject__teachersubject__is_active=True,
+        enrollments__is_active=True
+    ).distinct()
+    
+    # Method 2: Students in classes where this teacher has timetable entries
+    timetable_students = StudentProfile.objects.filter(
+        course__in=TimetableEntry.objects.filter(teacher=teacher, is_active=True).values_list('course', flat=True),
+        year__in=TimetableEntry.objects.filter(teacher=teacher, is_active=True).values_list('year', flat=True),
+        section__in=TimetableEntry.objects.filter(teacher=teacher, is_active=True).values_list('section', flat=True)
+    ).distinct()
+    
+    # Combine both approaches for comprehensive student list
+    all_teacher_students = (enrolled_students | timetable_students).distinct()
     
     # Apply filters if provided
+    students_query = all_teacher_students
     if course:
         students_query = students_query.filter(course=course)
     if year:
@@ -218,28 +231,48 @@ def teacher_students(request):
     if section:
         students_query = students_query.filter(section=section)
     
-    students = students_query.order_by('course', 'year', 'section', 'roll_number')
+    students = students_query.select_related('user').order_by('course', 'year', 'section', 'roll_number')
     
-    # Get unique courses, years, sections for filters
-    all_students = StudentProfile.objects.filter(
-        enrollment__subject__teachersubject__teacher=teacher,
-        enrollment__subject__teachersubject__is_active=True,
-        enrollment__is_active=True
-    ).distinct()
+    # Get filter options from comprehensive student data and timetable entries
+    courses = list(set(
+        list(all_teacher_students.values_list('course', flat=True)) +
+        list(TimetableEntry.objects.filter(teacher=teacher, is_active=True).values_list('course', flat=True))
+    ))
     
-    courses = all_students.values_list('course', flat=True).distinct()
-    years = all_students.values_list('year', flat=True).distinct()
-    sections = all_students.values_list('section', flat=True).distinct()
+    years = sorted(list(set(
+        list(all_teacher_students.values_list('year', flat=True)) +
+        list(TimetableEntry.objects.filter(teacher=teacher, is_active=True).values_list('year', flat=True))
+    )))
+    
+    sections = sorted(list(set(
+        list(all_teacher_students.values_list('section', flat=True)) +
+        list(TimetableEntry.objects.filter(teacher=teacher, is_active=True).values_list('section', flat=True))
+    )))
+    
+    # Get teacher's subjects for additional context
+    teacher_subjects = TeacherSubject.objects.filter(
+        teacher=teacher,
+        is_active=True
+    ).select_related('subject')
+    
+    # Get classes taught count
+    classes_taught = TimetableEntry.objects.filter(
+        teacher=teacher,
+        is_active=True
+    ).values('course', 'year', 'section').distinct().count()
     
     context = {
         'teacher': teacher,
         'students': students,
-        'courses': courses,
-        'years': sorted(years) if years else [],
+        'courses': sorted(courses),
+        'years': years,
         'sections': sections,
         'selected_course': course,
         'selected_year': year,
-        'selected_section': section
+        'selected_section': section,
+        'total_students': students.count(),
+        'teacher_subjects': teacher_subjects,
+        'classes_taught': classes_taught,
     }
     
     return render(request, 'teacher/students.html', context)
@@ -501,7 +534,7 @@ def attendance_reports(request):
     attendance_percentage = (present_count / total_classes * 100) if total_classes > 0 else 0
     
     # Get recent attendance records
-    recent_attendance = attendance_query.order_by('-date', '-created_at')[:50]
+    recent_attendance = attendance_query.order_by('-date', '-marked_at')[:50]
     
     # Get student-wise attendance summary
     from django.db.models import Count, Case, When, IntegerField
