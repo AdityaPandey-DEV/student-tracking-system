@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}Verify OTP - Enhanced Timetable System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .otp-input {
+        font-size: 1.5rem;
+        text-align: center;
+        letter-spacing: 0.5rem;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-info text-white text-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-mobile-alt me-2"></i>OTP Verification
+                    </h4>
+                </div>
+                
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-sms text-info" style="font-size: 3rem;"></i>
+                        <h5 class="mt-3">Enter Verification Code</h5>
+                        <p class="text-muted">
+                            We've sent a 6-digit verification code to your registered phone number.
+                        </p>
+                    </div>
+
+                    <form method="post" id="otpForm">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <div class="form-floating">
+                                <input type="text" class="form-control otp-input" id="otp_code" name="otp_code" 
+                                       placeholder="000000" required pattern="[0-9]{6}" maxlength="6" autocomplete="off">
+                                <label for="otp_code">
+                                    <i class="fas fa-key me-2"></i>Enter 6-digit OTP
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check-circle me-2"></i>Verify OTP
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="text-center">
+                        <p class="text-muted small">The OTP is valid for 10 minutes.</p>
+                        <p class="text-muted small">Didn't receive the code?</p>
+                        <a href="{% url 'accounts:forgot_password' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-redo me-1"></i>Go Back
+                        </a>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <hr>
+                        <p class="text-muted">
+                            Remember your password? 
+                            <a href="{% url 'accounts:login' %}" class="text-decoration-none">
+                                <i class="fas fa-sign-in-alt me-1"></i>Login here
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // OTP input formatting
+    document.getElementById('otp_code').addEventListener('input', function(e) {
+        // Remove any non-digits
+        this.value = this.value.replace(/\D/g, '');
+    });
+
+    // Auto-submit when 6 digits are entered
+    document.getElementById('otp_code').addEventListener('input', function(e) {
+        if (this.value.length === 6) {
+            setTimeout(() => {
+                if (this.value.length === 6) {
+                    document.getElementById('otpForm').submit();
+                }
+            }, 500);
+        }
+    });
+
+    // Focus on the input field when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('otp_code').focus();
+    });
+</script>
+{% endblock %}

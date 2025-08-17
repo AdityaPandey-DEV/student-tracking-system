@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: enhanced-timetable-system
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn enhanced_timetable_system.wsgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DATABASE_URL
+        fromDatabase:
+          name: timetable-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: False
+      - key: ALLOWED_HOSTS
+        value: "smart-time-table-management-system.onrender.com,*.onrender.com,localhost,127.0.0.1"
+
+databases:
+  - name: timetable-db
+    databaseName: enhanced_timetable_system
+    user: timetable_user

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Enhanced Timetable System - Email Verification</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            text-align: center;
+            padding: 30px 20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .otp-code {
+            font-size: 32px;
+            font-weight: bold;
+            color: #007bff;
+            background-color: #e3f2fd;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            letter-spacing: 5px;
+            border: 2px dashed #007bff;
+        }
+        .info-box {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎓 Enhanced Timetable System</h1>
+            <p>Email Verification Required</p>
+        </div>
+        
+        <div class="content">
+            <h2>Welcome! 🎉</h2>
+            <p>Thank you for registering with Enhanced Timetable System. To complete your registration, please use the verification code below:</p>
+            
+            <div class="otp-code">
+                {{ otp_code }}
+            </div>
+            
+            <div class="info-box">
+                <strong>⏰ Important:</strong> This code expires in {{ expires_minutes }} minutes.
+            </div>
+            
+            <p>Enter this code on the registration page to verify your email address and activate your account.</p>
+            
+            <p><strong>📧 Why Email OTP?</strong><br>
+            We use email verification instead of SMS to provide a completely FREE registration experience for all students!</p>
+        </div>
+        
+        <div class="footer">
+            <p>If you didn't request this verification code, please ignore this email.</p>
+            <p>&copy; 2025 Enhanced Timetable System - Making education management easier!</p>
+        </div>
+    </div>
+</body>
+</html>

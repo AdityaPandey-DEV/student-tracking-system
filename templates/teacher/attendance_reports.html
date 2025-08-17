@@ -1,0 +1,307 @@
+{% extends 'base.html' %}
+
+{% block title %}Attendance Reports - Enhanced Timetable System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Attendance Reports
+                    </h1>
+                    <p class="text-muted">View attendance statistics for your classes</p>
+                </div>
+                <div>
+                    <a href="{% url 'accounts:teacher_dashboard' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="card-title mb-0">{{ total_classes }}</h4>
+                            <p class="card-text mb-0">Total Classes</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-calendar fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="card-title mb-0">{{ present_count }}</h4>
+                            <p class="card-text mb-0">Present Records</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-check fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="card-title mb-0">{{ attendance_percentage }}%</h4>
+                            <p class="card-text mb-0">Overall Attendance</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-percentage fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="card-title mb-0">{{ student_attendance.count }}</h4>
+                            <p class="card-text mb-0">Total Students</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Filters</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-2">
+                            <label class="form-label">Course</label>
+                            <select name="course" class="form-select">
+                                <option value="">All Courses</option>
+                                {% for course in courses %}
+                                    <option value="{{ course }}" {% if course == selected_course %}selected{% endif %}>
+                                        {{ course }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Year</label>
+                            <select name="year" class="form-select">
+                                <option value="">All Years</option>
+                                {% for year in years %}
+                                    <option value="{{ year }}" {% if year|stringformat:"s" == selected_year %}selected{% endif %}>
+                                        Year {{ year }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Section</label>
+                            <select name="section" class="form-select">
+                                <option value="">All Sections</option>
+                                {% for section in sections %}
+                                    <option value="{{ section }}" {% if section == selected_section %}selected{% endif %}>
+                                        Section {{ section }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Subject</label>
+                            <select name="subject" class="form-select">
+                                <option value="">All Subjects</option>
+                                {% for teacher_subject in teacher_subjects %}
+                                    <option value="{{ teacher_subject.subject.id }}" {% if teacher_subject.subject.id|stringformat:"s" == selected_subject %}selected{% endif %}>
+                                        {{ teacher_subject.subject.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-filter me-1"></i>Filter
+                                </button>
+                                <a href="{% url 'accounts:attendance_reports' %}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-refresh me-1"></i>Clear
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student-wise Attendance -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Student-wise Attendance Summary</h5>
+                    <button class="btn btn-sm btn-outline-success" onclick="exportAttendance()">
+                        <i class="fas fa-download me-1"></i>Export
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    {% if student_attendance %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Roll Number</th>
+                                        <th>Student Name</th>
+                                        <th>Total Classes</th>
+                                        <th>Present</th>
+                                        <th>Absent</th>
+                                        <th>Late</th>
+                                        <th>Attendance %</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for student in student_attendance %}
+                                        <tr>
+                                            <td>
+                                                <span class="badge bg-primary">{{ student.student__roll_number }}</span>
+                                            </td>
+                                            <td>
+                                                <div class="fw-bold">{{ student.student__user__first_name }} {{ student.student__user__last_name }}</div>
+                                            </td>
+                                            <td>{{ student.total_classes }}</td>
+                                            <td>
+                                                <span class="badge bg-success">{{ student.present_classes }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-danger">{{ student.absent_classes }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-warning">{{ student.late_classes }}</span>
+                                            </td>
+                                            <td>
+                                                <div class="progress" style="height: 20px;">
+                                                    <div class="progress-bar 
+                                                        {% if student.attendance_percentage >= 80 %}bg-success
+                                                        {% elif student.attendance_percentage >= 60 %}bg-warning
+                                                        {% else %}bg-danger{% endif %}" 
+                                                        style="width: {{ student.attendance_percentage }}%;">
+                                                        {{ student.attendance_percentage|floatformat:1 }}%
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {% if student.attendance_percentage >= 80 %}
+                                                    <span class="badge bg-success">Good</span>
+                                                {% elif student.attendance_percentage >= 60 %}
+                                                    <span class="badge bg-warning">Average</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">Poor</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No Attendance Records Found</h5>
+                            <p class="text-muted">No attendance data matches the current filters.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Attendance Records -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Attendance Records</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_attendance %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Student</th>
+                                        <th>Subject</th>
+                                        <th>Status</th>
+                                        <th>Marked By</th>
+                                        <th>Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for attendance in recent_attendance %}
+                                        <tr>
+                                            <td>{{ attendance.date|date:"M d, Y" }}</td>
+                                            <td>
+                                                <div class="fw-bold">{{ attendance.student.user.get_full_name }}</div>
+                                                <small class="text-muted">{{ attendance.student.roll_number }}</small>
+                                            </td>
+                                            <td>{{ attendance.timetable_entry.subject.name }}</td>
+                                            <td>
+                                                {% if attendance.status == 'present' %}
+                                                    <span class="badge bg-success">Present</span>
+                                                {% elif attendance.status == 'absent' %}
+                                                    <span class="badge bg-danger">Absent</span>
+                                                {% elif attendance.status == 'late' %}
+                                                    <span class="badge bg-warning">Late</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">{{ attendance.status|title }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ attendance.marked_by.get_full_name }}</td>
+                                            <td>{{ attendance.marked_at|date:"H:i" }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-clock fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No Recent Records</h5>
+                            <p class="text-muted">No recent attendance records found.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function exportAttendance() {
+    alert('Export functionality would be implemented here');
+}
+</script>
+{% endblock %}

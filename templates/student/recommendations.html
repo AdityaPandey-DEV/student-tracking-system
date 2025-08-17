@@ -1,0 +1,588 @@
+{% extends 'base.html' %}
+
+{% block title %}Study Recommendations - Enhanced Timetable System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-lightbulb me-2"></i>AI Study Recommendations
+                    </h1>
+                    <p class="text-muted">Personalized study suggestions based on your performance</p>
+                </div>
+                <div>
+                    <a href="{% url 'accounts:student_dashboard' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Recommendations Summary -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="card-title mb-0">{{ recommendations.priority_subjects|length|default:0 }}</h4>
+                            <p class="card-text mb-0">Priority Subjects</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-star fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="card-title mb-0">{{ recommendations.study_plan|length|default:0 }}</h4>
+                            <p class="card-text mb-0">Study Plans</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-book-open fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="card-title mb-0">{{ recommendations.confidence_score|default:0 }}%</h4>
+                            <p class="card-text mb-0">Confidence Score</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-chart-line fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="card-title mb-0">AI</h4>
+                            <p class="card-text mb-0">Powered</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-robot fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Priority Subjects -->
+    {% if recommendations.priority_subjects %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>Priority Subjects - Need Immediate Attention
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for subject in recommendations.priority_subjects %}
+                        <div class="col-md-4 mb-3">
+                            <div class="alert alert-warning">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-book me-2"></i>{{ subject }}
+                                </h6>
+                                <p class="mb-0">Focus on this subject to improve your overall performance.</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Detailed Study Plan -->
+    {% if recommendations.study_plan %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-calendar-check me-2"></i>Personalized Study Plan
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for plan in recommendations.study_plan %}
+                        <div class="col-lg-6 mb-4">
+                            <div class="card border-left-primary h-100">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-graduation-cap me-2"></i>{{ plan.subject }}
+                                    </h6>
+                                    <small>{{ plan.hours_per_week }} hours per week recommended</small>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <h6 class="text-muted">Focus Areas:</h6>
+                                        <ul class="list-unstyled">
+                                            {% for area in plan.focus_areas %}
+                                            <li>
+                                                <i class="fas fa-check-circle text-success me-2"></i>{{ area }}
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h6 class="text-muted">Recommended Resources:</h6>
+                                        <ul class="list-unstyled">
+                                            {% for resource in plan.resources %}
+                                            <li>
+                                                <i class="fas fa-external-link-alt text-info me-2"></i>{{ resource }}
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Daily Schedule Recommendations -->
+    {% if recommendations.daily_schedule %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-clock me-2"></i>Recommended Daily Study Schedule
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for time_period, activity in recommendations.daily_schedule.items %}
+                        <div class="col-md-4 mb-3">
+                            <div class="schedule-card">
+                                <div class="schedule-time">
+                                    <i class="fas fa-sun me-2"></i>{{ time_period|capfirst }}
+                                </div>
+                                <div class="schedule-activity">
+                                    {{ activity }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Exam Strategy -->
+    {% if recommendations.exam_strategy %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-clipboard-check me-2"></i>Exam Preparation Strategy
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-graduation-cap me-2"></i>AI Recommended Strategy
+                        </h6>
+                        <p class="mb-0">{{ recommendations.exam_strategy }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Performance Insights -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Performance Insights
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="insight-card success">
+                                <h6>
+                                    <i class="fas fa-trophy text-success me-2"></i>Strengths
+                                </h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-check text-success me-2"></i>Regular attendance pattern</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>Strong performance in Mathematics</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>Good assignment submission rate</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="insight-card warning">
+                                <h6>
+                                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>Areas for Improvement
+                                </h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-arrow-up text-warning me-2"></i>Focus more on Physics concepts</li>
+                                    <li><i class="fas fa-arrow-up text-warning me-2"></i>Improve time management for assignments</li>
+                                    <li><i class="fas fa-arrow-up text-warning me-2"></i>Participate more in class discussions</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Study Tips and Techniques -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-brain me-2"></i>AI-Powered Study Tips
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="tip-card">
+                                <div class="tip-icon">
+                                    <i class="fas fa-clock text-primary"></i>
+                                </div>
+                                <h6>Time Management</h6>
+                                <p>Use the Pomodoro technique: 25 minutes of focused study followed by a 5-minute break.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="tip-card">
+                                <div class="tip-icon">
+                                    <i class="fas fa-sticky-note text-success"></i>
+                                </div>
+                                <h6>Active Recall</h6>
+                                <p>Test yourself regularly without looking at notes. Create flashcards for key concepts.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="tip-card">
+                                <div class="tip-icon">
+                                    <i class="fas fa-users text-info"></i>
+                                </div>
+                                <h6>Group Study</h6>
+                                <p>Join or form study groups to discuss difficult concepts and share knowledge.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="tip-card">
+                                <div class="tip-icon">
+                                    <i class="fas fa-bed text-warning"></i>
+                                </div>
+                                <h6>Rest & Sleep</h6>
+                                <p>Ensure 7-8 hours of sleep daily. Your brain consolidates learning during rest.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="tip-card">
+                                <div class="tip-icon">
+                                    <i class="fas fa-repeat text-danger"></i>
+                                </div>
+                                <h6>Spaced Repetition</h6>
+                                <p>Review material at increasing intervals to improve long-term retention.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="tip-card">
+                                <div class="tip-icon">
+                                    <i class="fas fa-question-circle text-purple"></i>
+                                </div>
+                                <h6>Ask Questions</h6>
+                                <p>Don't hesitate to ask teachers and peers when you don't understand something.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Items -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-tasks me-2"></i>Recommended Action Items
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="checklist">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="action1">
+                            <label class="form-check-label" for="action1">
+                                Create a dedicated study schedule for the next week
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="action2">
+                            <label class="form-check-label" for="action2">
+                                Join a Physics study group or find a study partner
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="action3">
+                            <label class="form-check-label" for="action3">
+                                Complete all pending assignments within 48 hours
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="action4">
+                            <label class="form-check-label" for="action4">
+                                Schedule office hours with teachers for difficult subjects
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="action5">
+                            <label class="form-check-label" for="action5">
+                                Set up a distraction-free study environment
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:student_subjects' %}" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="fas fa-book d-block mb-1"></i>
+                                View My Subjects
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:student_timetable' %}" class="btn btn-outline-success w-100 mb-2">
+                                <i class="fas fa-calendar-alt d-block mb-1"></i>
+                                Check Timetable
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounts:student_ai_chat' %}" class="btn btn-outline-info w-100 mb-2">
+                                <i class="fas fa-robot d-block mb-1"></i>
+                                Chat with AI Tutor
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-warning w-100 mb-2" onclick="refreshRecommendations()">
+                                <i class="fas fa-sync-alt d-block mb-1"></i>
+                                Refresh Recommendations
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.border-left-primary {
+    border-left: 4px solid #007bff !important;
+}
+
+.schedule-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    height: 100%;
+}
+
+.schedule-time {
+    font-size: 1.1em;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.schedule-activity {
+    font-size: 0.9em;
+    opacity: 0.9;
+}
+
+.insight-card {
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    height: 100%;
+}
+
+.insight-card.success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+}
+
+.insight-card.warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+}
+
+.tip-card {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    height: 100%;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.tip-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.tip-icon {
+    font-size: 2em;
+    margin-bottom: 15px;
+}
+
+.tip-card h6 {
+    color: #495057;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.tip-card p {
+    font-size: 0.9em;
+    color: #6c757d;
+    margin-bottom: 0;
+}
+
+.checklist .form-check {
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    border-left: 4px solid #007bff;
+}
+
+.checklist .form-check-label {
+    font-weight: 500;
+    color: #495057;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: box-shadow 0.15s ease-in-out;
+}
+
+.card:hover {
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+    .tip-card, .schedule-card {
+        margin-bottom: 15px;
+    }
+    
+    .card-header {
+        padding: 0.75rem;
+    }
+    
+    .card-body {
+        padding: 0.75rem;
+    }
+}
+</style>
+
+<script>
+function refreshRecommendations() {
+    // Show loading state
+    const button = event.target;
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+    button.disabled = true;
+    
+    // Simulate API call (in real implementation, this would make an AJAX request)
+    setTimeout(() => {
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+        
+        // Show success message
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success alert-dismissible fade show';
+        alert.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>
+            Recommendations updated successfully!
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.querySelector('.container-fluid').insertBefore(alert, document.querySelector('.container-fluid').firstChild);
+        
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 3000);
+    }, 2000);
+}
+
+// Save action item progress to localStorage
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.checklist input[type="checkbox"]');
+    
+    // Load saved states
+    checkboxes.forEach(checkbox => {
+        const saved = localStorage.getItem(checkbox.id);
+        if (saved === 'true') {
+            checkbox.checked = true;
+        }
+    });
+    
+    // Save states on change
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            localStorage.setItem(this.id, this.checked);
+        });
+    });
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+
+{% block title %}Profile - Enhanced Timetable System{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-circle me-2"></i>User Profile
+                    </h4>
+                </div>
+                
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-4">
+                            <div class="profile-avatar mb-3">
+                                <i class="fas fa-user-circle text-primary" style="font-size: 8rem;"></i>
+                            </div>
+                            <h5 class="fw-bold">{{ user.get_full_name|default:user.username }}</h5>
+                            <span class="badge bg-primary fs-6 text-capitalize">{{ user.user_type }}</span>
+                        </div>
+                        
+                        <div class="col-md-8">
+                            <h6 class="text-muted mb-3">Account Information</h6>
+                            
+                            <div class="row mb-3">
+                                <div class="col-sm-4">
+                                    <strong><i class="fas fa-user me-2"></i>Full Name:</strong>
+                                </div>
+                                <div class="col-sm-8">
+                                    {{ user.get_full_name|default:'Not provided' }}
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-sm-4">
+                                    <strong><i class="fas fa-envelope me-2"></i>Email:</strong>
+                                </div>
+                                <div class="col-sm-8">
+                                    {{ user.email|default:'Not provided' }}
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-sm-4">
+                                    <strong><i class="fas fa-phone me-2"></i>Phone Number:</strong>
+                                </div>
+                                <div class="col-sm-8">
+                                    {{ user.phone_number|default:'Not provided' }}
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-sm-4">
+                                    <strong><i class="fas fa-calendar me-2"></i>Member Since:</strong>
+                                </div>
+                                <div class="col-sm-8">
+                                    {{ user.date_joined|date:'F d, Y' }}
+                                </div>
+                            </div>
+
+                            {% if user_type == 'student' and profile %}
+                            <hr class="my-4">
+                            <h6 class="text-muted mb-3">Academic Information</h6>
+                            
+                            <div class="row mb-3">
+                                <div class="col-sm-4">
+                                    <strong><i class="fas fa-id-card me-2"></i>Roll Number:</strong>
+                                </div>
+                                <div class="col-sm-8">
+                                    <span class="badge bg-secondary">{{ profile.roll_number }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-sm-4">
+                                    <strong><i class="fas fa-graduation-cap me-2"></i>Course:</strong>
+                                </div>
+                                <div class="col-sm-8">
+                                    {{ profile.course }}
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-sm-4">
+                                    <strong><i class="fas fa-calendar-alt me-2"></i>Year:</strong>
+                                </div>
+                                <div class="col-sm-8">
+                                    {{ profile.get_year_display }}
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-sm-4">
+                                    <strong><i class="fas fa-users me-2"></i>Section:</strong>
+                                </div>
+                                <div class="col-sm-8">
+                                    {{ profile.section }}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if user_type == 'admin' and profile %}
+                            <hr class="my-4">
+                            <h6 class="text-muted mb-3">Administrative Information</h6>
+                            
+                            <div class="row mb-3">
+                                <div class="col-sm-4">
+                                    <strong><i class="fas fa-id-badge me-2"></i>Admin ID:</strong>
+                                </div>
+                                <div class="col-sm-8">
+                                    <span class="badge bg-warning">{{ profile.admin_id }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-sm-4">
+                                    <strong><i class="fas fa-building me-2"></i>Department:</strong>
+                                </div>
+                                <div class="col-sm-8">
+                                    {{ profile.department }}
+                                </div>
+                            </div>
+                            
+                            {% if profile.designation %}
+                            <div class="row mb-3">
+                                <div class="col-sm-4">
+                                    <strong><i class="fas fa-briefcase me-2"></i>Designation:</strong>
+                                </div>
+                                <div class="col-sm-8">
+                                    {{ profile.designation }}
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% endif %}
+
+                            {% if user_type == 'teacher' and profile %}
+                            <hr class="my-4">
+                            <h6 class="text-muted mb-3">Professional Information</h6>
+                            
+                            {% if profile.employee_id %}
+                            <div class="row mb-3">
+                                <div class="col-sm-4">
+                                    <strong><i class="fas fa-id-badge me-2"></i>Employee ID:</strong>
+                                </div>
+                                <div class="col-sm-8">
+                                    <span class="badge bg-success">{{ profile.employee_id }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if profile.department %}
+                            <div class="row mb-3">
+                                <div class="col-sm-4">
+                                    <strong><i class="fas fa-building me-2"></i>Department:</strong>
+                                </div>
+                                <div class="col-sm-8">
+                                    {{ profile.department }}
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if profile.designation %}
+                            <div class="row mb-3">
+                                <div class="col-sm-4">
+                                    <strong><i class="fas fa-briefcase me-2"></i>Designation:</strong>
+                                </div>
+                                <div class="col-sm-8">
+                                    {{ profile.designation }}
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if profile.specialization %}
+                            <div class="row mb-3">
+                                <div class="col-sm-4">
+                                    <strong><i class="fas fa-star me-2"></i>Specialization:</strong>
+                                </div>
+                                <div class="col-sm-8">
+                                    {{ profile.specialization }}
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="text-center">
+                        {% if user_type == 'student' %}
+                            <a href="{% url 'accounts:student_dashboard' %}" class="btn btn-primary me-2">
+                                <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                            </a>
+                        {% elif user_type == 'admin' %}
+                            <a href="{% url 'accounts:admin_dashboard' %}" class="btn btn-primary me-2">
+                                <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                            </a>
+                        {% elif user_type == 'teacher' %}
+                            <a href="{% url 'accounts:teacher_dashboard' %}" class="btn btn-primary me-2">
+                                <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                            </a>
+                        {% endif %}
+                        
+                        <a href="{% url 'accounts:forgot_password' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-key me-1"></i>Change Password
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

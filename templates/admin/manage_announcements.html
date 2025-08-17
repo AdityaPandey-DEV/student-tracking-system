@@ -1,0 +1,516 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Announcements - Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">Manage Announcements</h1>
+                    <p class="text-muted">Create and manage announcements for students and faculty</p>
+                </div>
+                <div>
+                    <a href="{% url 'accounts:admin_dashboard' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Create Announcement Form -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-bullhorn me-2"></i>Create New Announcement
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Announcement Title</label>
+                            <input type="text" class="form-control" id="title" name="title" required 
+                                   placeholder="Enter announcement title" maxlength="200">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="content" class="form-label">Content</label>
+                            <textarea class="form-control" id="content" name="content" rows="6" required
+                                      placeholder="Write your announcement content here..."></textarea>
+                            <div class="form-text">
+                                <span id="contentCount">0</span> characters
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="target_audience" class="form-label">Target Audience</label>
+                            <select class="form-select" id="target_audience" name="target_audience" required 
+                                    onchange="toggleTargetFields()">
+                                <option value="all">All Students</option>
+                                <option value="course">Specific Course</option>
+                                <option value="year">Specific Year</option>
+                                <option value="section">Specific Section</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Course Selection (Hidden by default) -->
+                        <div class="mb-3" id="courseField" style="display: none;">
+                            <label for="target_course" class="form-label">Select Course</label>
+                            <select class="form-select" id="target_course" name="target_course">
+                                <option value="">Choose Course</option>
+                                {% for course in courses %}
+                                    <option value="{{ course.name }}">{{ course.name }} - {{ course.full_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Year Selection (Hidden by default) -->
+                        <div class="mb-3" id="yearField" style="display: none;">
+                            <label for="target_year" class="form-label">Select Year</label>
+                            <select class="form-select" id="target_year" name="target_year">
+                                <option value="">Choose Year</option>
+                                <option value="1">1st Year</option>
+                                <option value="2">2nd Year</option>
+                                <option value="3">3rd Year</option>
+                                <option value="4">4th Year</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Section Selection (Hidden by default) -->
+                        <div class="mb-3" id="sectionField" style="display: none;">
+                            <label for="target_section" class="form-label">Select Section</label>
+                            <input type="text" class="form-control" id="target_section" name="target_section" 
+                                   placeholder="e.g., A" maxlength="5" style="text-transform: uppercase;">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_urgent" name="is_urgent" value="1">
+                                <label class="form-check-label" for="is_urgent">
+                                    <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                                    Mark as Urgent
+                                </label>
+                            </div>
+                            <div class="form-text">Urgent announcements will be highlighted and shown at the top</div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary" onclick="previewAnnouncement()">
+                                <i class="fas fa-eye me-1"></i>Preview
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-1"></i>Post Announcement
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Tips and Stats -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-lightbulb me-2"></i>Announcement Tips
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle me-2"></i>Best Practices</h6>
+                        <ul class="mb-0 small">
+                            <li>Keep titles clear and concise</li>
+                            <li>Use bullet points for better readability</li>
+                            <li>Include dates and deadlines prominently</li>
+                            <li>Use urgent sparingly to maintain effectiveness</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="row text-center mt-3">
+                        <div class="col-4">
+                            <h4 class="text-primary mb-1">{{ announcements.count }}</h4>
+                            <small class="text-muted">Total Posted</small>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-warning mb-1">
+                                {{ announcements|dictsort:"is_urgent"|slice:":5"|length }}
+                            </h4>
+                            <small class="text-muted">Active Urgent</small>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-success mb-1">{{ courses.count }}</h4>
+                            <small class="text-muted">Courses</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Activity</h5>
+                </div>
+                <div class="card-body">
+                    {% if announcements %}
+                        {% for announcement in announcements|slice:":3" %}
+                            <div class="d-flex align-items-start mb-3 {% if not forloop.last %}border-bottom pb-3{% endif %}">
+                                <div class="flex-shrink-0">
+                                    {% if announcement.is_urgent %}
+                                        <i class="fas fa-exclamation-circle text-warning"></i>
+                                    {% else %}
+                                        <i class="fas fa-bullhorn text-primary"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1">{{ announcement.title|truncatechars:40 }}</h6>
+                                    <p class="small text-muted mb-1">{{ announcement.content|truncatewords:10 }}</p>
+                                    <small class="text-muted">
+                                        {{ announcement.created_at|timesince }} ago • {{ announcement.target_audience|capfirst }}
+                                    </small>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted small">No recent announcements</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Announcements List -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">All Announcements</h5>
+                    <div class="d-flex gap-2">
+                        <div class="input-group" style="width: 300px;">
+                            <input type="text" class="form-control form-control-sm" 
+                                   id="searchAnnouncements" placeholder="Search announcements...">
+                            <button class="btn btn-outline-secondary btn-sm" type="button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="filterAnnouncements('all')">All</button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="filterAnnouncements('urgent')">Urgent</button>
+                            <button type="button" class="btn btn-sm btn-outline-info" onclick="filterAnnouncements('recent')">Recent</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="announcementsTable">
+                            <thead>
+                                <tr>
+                                    <th width="5%"></th>
+                                    <th width="25%">Title</th>
+                                    <th width="35%">Content Preview</th>
+                                    <th width="15%">Target Audience</th>
+                                    <th width="10%">Posted</th>
+                                    <th width="10%">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for announcement in announcements %}
+                                    <tr class="announcement-row" data-urgent="{{ announcement.is_urgent|yesno:'true,false' }}" 
+                                        data-created="{{ announcement.created_at|date:'c' }}">
+                                        <td class="text-center">
+                                            {% if announcement.is_urgent %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-exclamation"></i>
+                                                </span>
+                                            {% else %}
+                                                <i class="fas fa-bullhorn text-muted"></i>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <strong>{{ announcement.title }}</strong>
+                                            {% if announcement.is_urgent %}
+                                                <span class="badge bg-warning ms-2">Urgent</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <p class="mb-0 small">{{ announcement.content|truncatewords:15 }}</p>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ announcement.get_target_audience_display }}</span>
+                                            {% if announcement.target_course %}
+                                                <br><small class="text-muted">{{ announcement.target_course }}</small>
+                                            {% endif %}
+                                            {% if announcement.target_year %}
+                                                <br><small class="text-muted">Year {{ announcement.target_year }}</small>
+                                            {% endif %}
+                                            {% if announcement.target_section %}
+                                                <br><small class="text-muted">Section {{ announcement.target_section }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small>{{ announcement.created_at|date:"M d, Y" }}</small><br>
+                                            <small class="text-muted">{{ announcement.created_at|time:"H:i" }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-outline-info" 
+                                                        onclick="viewAnnouncement('{{ announcement.id }}')">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-warning" 
+                                                        onclick="editAnnouncement('{{ announcement.id }}')">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-danger" 
+                                                        onclick="deleteAnnouncement('{{ announcement.id }}')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">
+                                            <i class="fas fa-bullhorn fa-3x mb-3 d-block"></i>
+                                            No announcements posted yet. Create your first announcement above!
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-eye me-2"></i>Announcement Preview
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0" id="previewTitle">Title will appear here</h6>
+                            <small class="text-muted">Posted by {{ user.get_full_name }} • Just now</small>
+                        </div>
+                        <div>
+                            <span class="badge bg-warning" id="urgentBadge" style="display: none;">Urgent</span>
+                            <span class="badge bg-info" id="audienceBadge">All Students</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p id="previewContent">Content will appear here</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close Preview</button>
+                <button type="button" class="btn btn-primary" onclick="submitForm()">Post Announcement</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Announcement Modal -->
+<div class="modal fade" id="viewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Announcement Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="viewContent">
+                <!-- Content will be loaded dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleTargetFields() {
+    const audience = document.getElementById('target_audience').value;
+    const courseField = document.getElementById('courseField');
+    const yearField = document.getElementById('yearField');
+    const sectionField = document.getElementById('sectionField');
+    
+    // Hide all fields first
+    courseField.style.display = 'none';
+    yearField.style.display = 'none';
+    sectionField.style.display = 'none';
+    
+    // Show relevant fields
+    if (audience === 'course') {
+        courseField.style.display = 'block';
+    } else if (audience === 'year') {
+        yearField.style.display = 'block';
+    } else if (audience === 'section') {
+        courseField.style.display = 'block';
+        yearField.style.display = 'block';
+        sectionField.style.display = 'block';
+    }
+}
+
+function previewAnnouncement() {
+    const title = document.getElementById('title').value || 'Title will appear here';
+    const content = document.getElementById('content').value || 'Content will appear here';
+    const audience = document.getElementById('target_audience').value;
+    const isUrgent = document.getElementById('is_urgent').checked;
+    
+    // Update preview content
+    document.getElementById('previewTitle').textContent = title;
+    document.getElementById('previewContent').textContent = content;
+    
+    // Update audience badge
+    const audienceTexts = {
+        'all': 'All Students',
+        'course': 'Specific Course',
+        'year': 'Specific Year',
+        'section': 'Specific Section'
+    };
+    document.getElementById('audienceBadge').textContent = audienceTexts[audience];
+    
+    // Show/hide urgent badge
+    const urgentBadge = document.getElementById('urgentBadge');
+    urgentBadge.style.display = isUrgent ? 'inline' : 'none';
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
+}
+
+function submitForm() {
+    document.querySelector('form').submit();
+}
+
+function filterAnnouncements(filter) {
+    const rows = document.querySelectorAll('.announcement-row');
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    rows.forEach(row => {
+        let show = true;
+        
+        if (filter === 'urgent') {
+            show = row.dataset.urgent === 'true';
+        } else if (filter === 'recent') {
+            const created = new Date(row.dataset.created);
+            show = created > weekAgo;
+        }
+        
+        row.style.display = show ? '' : 'none';
+    });
+    
+    // Update button states
+    document.querySelectorAll('[onclick^="filterAnnouncements"]').forEach(btn => {
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-outline-secondary');
+    });
+    event.target.classList.remove('btn-outline-secondary');
+    event.target.classList.add('btn-primary');
+}
+
+function viewAnnouncement(announcementId) {
+    const modal = new bootstrap.Modal(document.getElementById('viewModal'));
+    document.getElementById('viewContent').innerHTML = 
+        '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+    modal.show();
+    
+    // In real implementation, this would fetch announcement details via AJAX
+    setTimeout(() => {
+        document.getElementById('viewContent').innerHTML = 
+            '<p>Detailed view of announcement ID: ' + announcementId + '</p>';
+    }, 1000);
+}
+
+function editAnnouncement(announcementId) {
+    alert('Edit announcement functionality would be implemented here for ID: ' + announcementId);
+}
+
+function deleteAnnouncement(announcementId) {
+    if (confirm('Are you sure you want to delete this announcement?')) {
+        alert('Delete announcement ID: ' + announcementId);
+    }
+}
+
+// Character counter for content
+document.getElementById('content').addEventListener('input', function() {
+    const count = this.value.length;
+    document.getElementById('contentCount').textContent = count;
+    
+    // Change color based on length
+    const counter = document.getElementById('contentCount');
+    if (count > 1000) {
+        counter.className = 'text-danger';
+    } else if (count > 800) {
+        counter.className = 'text-warning';
+    } else {
+        counter.className = 'text-muted';
+    }
+});
+
+// Auto-uppercase section input
+document.getElementById('target_section').addEventListener('input', function(e) {
+    e.target.value = e.target.value.toUpperCase();
+});
+
+// Search functionality
+document.getElementById('searchAnnouncements').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const rows = document.querySelectorAll('.announcement-row');
+    
+    rows.forEach(row => {
+        const title = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+        const content = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+        const visible = title.includes(searchTerm) || content.includes(searchTerm);
+        row.style.display = visible ? '' : 'none';
+    });
+});
+</script>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.7rem;
+}
+
+.announcement-row {
+    transition: all 0.2s;
+}
+
+.announcement-row:hover {
+    background-color: #f8f9fa;
+}
+
+.modal-lg {
+    max-width: 800px;
+}
+
+.badge {
+    font-size: 0.7rem;
+}
+</style>
+{% endblock %}

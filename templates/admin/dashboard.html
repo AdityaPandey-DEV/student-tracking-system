@@ -1,0 +1,273 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard - Enhanced Timetable System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">Admin Dashboard</h1>
+                    <p class="text-muted">Welcome back, {{ admin.full_name }}</p>
+                </div>
+                <div>
+                    <span class="badge bg-warning">{{ admin.admin_id }}</span>
+                    <span class="badge bg-secondary ms-2">{{ admin.department }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ total_students }}</h4>
+                            <p class="card-text">Total Students</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-user-graduate fa-2x"></i>
+                        </div>
+                    </div>
+                    <small>{{ recent_students }} new this week</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ total_teachers }}</h4>
+                            <p class="card-text">Active Teachers</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-chalkboard-teacher fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ total_courses }}</h4>
+                            <p class="card-text">Active Courses</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-graduation-cap fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ total_subjects }}</h4>
+                            <p class="card-text">Active Subjects</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-book fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Course Distribution -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Course-wise Student Distribution</h5>
+                </div>
+                <div class="card-body">
+                    {% if course_distribution %}
+                        {% for course in course_distribution %}
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <strong>{{ course.name }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ course.full_name }}</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-primary">{{ course.student_count }} students</span>
+                                </div>
+                            </div>
+                            <div class="progress mb-3" style="height: 5px;">
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: {% if total_students > 0 %}{% widthratio course.student_count total_students 100 %}%{% else %}0%{% endif %}">
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No course data available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Announcements -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Recent Announcements</h5>
+                    <a href="{% url 'accounts:manage_announcements' %}" class="btn btn-sm btn-primary">Manage</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_announcements %}
+                        {% for announcement in recent_announcements %}
+                            <div class="border-bottom pb-2 mb-2">
+                                <h6 class="mb-1">{{ announcement.title }}</h6>
+                                <p class="mb-1 text-muted small">{{ announcement.content|truncatewords:15 }}</p>
+                                <small class="text-muted">
+                                    {{ announcement.created_at|date:"M d, Y" }} • {{ announcement.target_audience }}
+                                    {% if announcement.is_urgent %}
+                                        <span class="badge bg-danger ms-1">Urgent</span>
+                                    {% endif %}
+                                </small>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No announcements available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <a href="{% url 'accounts:manage_courses' %}" class="btn btn-outline-primary btn-lg w-100 mb-2">
+                                <i class="fas fa-graduation-cap d-block mb-1"></i>
+                                Manage Courses
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{% url 'accounts:manage_teachers' %}" class="btn btn-outline-success btn-lg w-100 mb-2">
+                                <i class="fas fa-chalkboard-teacher d-block mb-1"></i>
+                                Manage Teachers
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{% url 'accounts:manage_students' %}" class="btn btn-outline-info btn-lg w-100 mb-2">
+                                <i class="fas fa-user-graduate d-block mb-1"></i>
+                                Manage Students
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{% url 'accounts:manage_timetable' %}" class="btn btn-outline-warning btn-lg w-100 mb-2">
+                                <i class="fas fa-calendar-alt d-block mb-1"></i>
+                                Manage Timetable
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{% url 'accounts:manage_announcements' %}" class="btn btn-outline-secondary btn-lg w-100 mb-2">
+                                <i class="fas fa-bullhorn d-block mb-1"></i>
+                                Announcements
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{% url 'accounts:ai_analytics' %}" class="btn btn-outline-dark btn-lg w-100 mb-2">
+                                <i class="fas fa-chart-line d-block mb-1"></i>
+                                AI Analytics
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Status -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">System Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center">
+                                <div class="text-success me-3">
+                                    <i class="fas fa-check-circle fa-2x"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">Timetable System</h6>
+                                    <small class="text-muted">{{ active_timetable_entries }} active entries</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center">
+                                <div class="text-success me-3">
+                                    <i class="fas fa-check-circle fa-2x"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">OTP System</h6>
+                                    <small class="text-muted">Active and functional</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center">
+                                <div class="text-info me-3">
+                                    <i class="fas fa-info-circle fa-2x"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">AI Features</h6>
+                                    <small class="text-muted">Analytics and optimization ready</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom CSS for dashboard -->
+<style>
+    .card {
+        border: none;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    
+    .progress {
+        border-radius: 0;
+    }
+    
+    .btn-outline-primary:hover,
+    .btn-outline-success:hover,
+    .btn-outline-info:hover,
+    .btn-outline-warning:hover,
+    .btn-outline-secondary:hover,
+    .btn-outline-dark:hover {
+        transform: translateY(-2px);
+        transition: all 0.2s;
+    }
+</style>
+{% endblock %}

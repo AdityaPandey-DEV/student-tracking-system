@@ -1,0 +1,527 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Students - Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">Manage Students</h1>
+                    <p class="text-muted">View students, manage enrollments, and reset passwords</p>
+                </div>
+                <div>
+                    <a href="{% url 'accounts:admin_dashboard' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Search & Filter Students</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="search" class="form-label">Search Students</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="{{ search_query|default:'' }}" 
+                                   placeholder="Roll number, name, or course">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="course_filter" class="form-label">Course</label>
+                            <select class="form-select" id="course_filter" name="course">
+                                <option value="">All Courses</option>
+                                {% for course in courses %}
+                                    <option value="{{ course.name }}" 
+                                            {% if course_filter == course.name %}selected{% endif %}>
+                                        {{ course.name }} - {{ course.full_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="year_filter" class="form-label">Year</label>
+                            <select class="form-select" id="year_filter" name="year">
+                                <option value="">All Years</option>
+                                <option value="1" {% if year_filter == '1' %}selected{% endif %}>1st Year</option>
+                                <option value="2" {% if year_filter == '2' %}selected{% endif %}>2nd Year</option>
+                                <option value="3" {% if year_filter == '3' %}selected{% endif %}>3rd Year</option>
+                                <option value="4" {% if year_filter == '4' %}selected{% endif %}>4th Year</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-search me-1"></i>Search
+                            </button>
+                            <a href="{% url 'accounts:manage_students' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>Clear
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Enroll Student in Subject -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Enroll Student in Subject</h5>
+                </div>
+                <div class="card-body">
+                    {% if students and subjects %}
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="enroll_student">
+                            
+                            <div class="mb-3">
+                                <label for="student_select" class="form-label">Select Student</label>
+                                <select class="form-select" id="student_select" name="student_id" required>
+                                    <option value="">Choose Student</option>
+                                    {% for student in students %}
+                                        <option value="{{ student.user.id }}">
+                                            {{ student.roll_number }} - {{ student.user.get_full_name }} ({{ student.course }} Y{{ student.year }})
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="subject_enroll" class="form-label">Select Subject</label>
+                                <select class="form-select" id="subject_enroll" name="subject_id" required>
+                                    <option value="">Choose Subject</option>
+                                    {% for subject in subjects %}
+                                        <option value="{{ subject.id }}">
+                                            {{ subject.code }} - {{ subject.name }} ({{ subject.course.name }})
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-6">
+                                    <label for="academic_year" class="form-label">Academic Year</label>
+                                    <input type="text" class="form-control" id="academic_year" name="academic_year" 
+                                           value="2023-24" placeholder="2023-24">
+                                </div>
+                                <div class="col-6">
+                                    <label for="semester_enroll" class="form-label">Semester</label>
+                                    <select class="form-select" id="semester_enroll" name="semester" required>
+                                        <option value="1">Semester 1</option>
+                                        <option value="2">Semester 2</option>
+                                        <option value="3">Semester 3</option>
+                                        <option value="4">Semester 4</option>
+                                        <option value="5">Semester 5</option>
+                                        <option value="6">Semester 6</option>
+                                        <option value="7">Semester 7</option>
+                                        <option value="8">Semester 8</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-success mt-3">
+                                <i class="fas fa-user-plus me-1"></i>Enroll Student
+                            </button>
+                        </form>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Students and subjects data is required for enrollment.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Reset Password -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Reset Student Password</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="resetPasswordForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="reset_password">
+                        
+                        <div class="mb-3">
+                            <label for="user_select" class="form-label">Select Student</label>
+                            <select class="form-select" id="user_select" name="user_id" required>
+                                <option value="">Choose Student</option>
+                                {% for student in students %}
+                                    <option value="{{ student.user.id }}">
+                                        {{ student.roll_number }} - {{ student.user.get_full_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="new_password" class="form-label">New Password</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="new_password" name="new_password" required 
+                                       minlength="8" placeholder="Enter new password">
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                    <i class="fas fa-eye" id="passwordToggle"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">Password must be at least 8 characters long.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-sm btn-outline-info" onclick="generatePassword()">
+                                <i class="fas fa-random me-1"></i>Generate Random Password
+                            </button>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-warning" onclick="return confirmPasswordReset()">
+                            <i class="fas fa-key me-1"></i>Reset Password
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Statistics -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Student Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <h3 class="text-primary mb-1">{{ students.count }}</h3>
+                                <small class="text-muted">Total Students</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="text-success mb-1">{{ recent_enrollments.count }}</h3>
+                            <small class="text-muted">Recent Enrollments</small>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="mt-3">
+                        <h6 class="text-muted mb-2">Course Distribution</h6>
+                        {% for course in courses %}
+                            {% with course_students=students|dictsort:"course" %}
+                                {% for student in students %}
+                                    {% if student.course == course.name %}
+                                        <!-- Count would be calculated in view -->
+                                    {% endif %}
+                                {% endfor %}
+                            {% endwith %}
+                            <div class="d-flex justify-content-between mb-1">
+                                <small>{{ course.name }}</small>
+                                <small class="text-muted">
+                                    {{ students|length }} students
+                                </small>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Students Table -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        All Students 
+                        {% if search_query or course_filter or year_filter %}
+                            <span class="badge bg-primary">Filtered Results</span>
+                        {% endif %}
+                    </h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-success" onclick="exportStudents()">
+                            <i class="fas fa-file-excel me-1"></i>Export
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Roll Number</th>
+                                    <th>Student Name</th>
+                                    <th>Course & Year</th>
+                                    <th>Section</th>
+                                    <th>Contact</th>
+                                    <th>Account Status</th>
+                                    <th>Enrolled Subjects</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in students %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ student.roll_number }}</strong>
+                                        </td>
+                                        <td>
+                                            {{ student.user.get_full_name }}
+                                            <br>
+                                            <small class="text-muted">{{ student.user.username }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ student.course }}</span><br>
+                                            <small>Year {{ student.year }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ student.section }}</span>
+                                        </td>
+                                        <td>
+                                            <small>{{ student.user.email }}</small><br>
+                                            <small class="text-muted">{{ student.user.phone_number|default:"No phone" }}</small>
+                                        </td>
+                                        <td>
+                                            {% if student.user.is_active %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Inactive</span>
+                                            {% endif %}
+                                            {% if student.user.is_verified %}
+                                                <span class="badge bg-info">Verified</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">Unverified</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small>
+                                                {% for enrollment in student.user.studentprofile.enrollments.all %}
+                                                    {% if enrollment.is_active %}
+                                                        <span class="badge bg-primary me-1 mb-1">{{ enrollment.subject.code }}</span>
+                                                    {% endif %}
+                                                {% empty %}
+                                                    <span class="text-muted">No enrollments</span>
+                                                {% endfor %}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-outline-info" 
+                                                        onclick="viewStudentDetails('{{ student.user.id }}')">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-warning" 
+                                                        onclick="editStudent('{{ student.user.id }}')">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-danger" 
+                                                        onclick="toggleStudentStatus('{{ student.user.id }}', {{ student.user.is_active|yesno:'true,false' }})">
+                                                    {% if student.user.is_active %}
+                                                        <i class="fas fa-user-times"></i>
+                                                    {% else %}
+                                                        <i class="fas fa-user-check"></i>
+                                                    {% endif %}
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted py-4">
+                                            <i class="fas fa-user-graduate fa-3x mb-3 d-block"></i>
+                                            {% if search_query or course_filter or year_filter %}
+                                                No students match your search criteria.
+                                            {% else %}
+                                                No students found. Students will appear here once they register.
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination would go here if implemented -->
+                    {% if students|length >= 50 %}
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Showing first 50 students. Use search/filter to find specific students.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Enrollments -->
+    {% if recent_enrollments %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Enrollments</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Subject</th>
+                                    <th>Academic Year</th>
+                                    <th>Semester</th>
+                                    <th>Enrolled On</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for enrollment in recent_enrollments %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ enrollment.student.roll_number }}</strong><br>
+                                            <small>{{ enrollment.student.user.get_full_name }}</small>
+                                        </td>
+                                        <td>
+                                            <strong>{{ enrollment.subject.code }}</strong><br>
+                                            <small>{{ enrollment.subject.name }}</small>
+                                        </td>
+                                        <td>{{ enrollment.academic_year }}</td>
+                                        <td>Semester {{ enrollment.semester }}</td>
+                                        <td>{{ enrollment.enrolled_at|date:"M d, Y" }}</td>
+                                        <td>
+                                            {% if enrollment.is_active %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Inactive</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Student Detail Modal -->
+<div class="modal fade" id="studentDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Student Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="studentDetailContent">
+                <!-- Content will be loaded dynamically -->
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePassword() {
+    const passwordInput = document.getElementById('new_password');
+    const passwordToggle = document.getElementById('passwordToggle');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        passwordToggle.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        passwordToggle.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+}
+
+function generatePassword() {
+    const length = 12;
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+    let password = "";
+    for (let i = 0; i < length; i++) {
+        password += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    document.getElementById('new_password').value = password;
+}
+
+function confirmPasswordReset() {
+    const studentSelect = document.getElementById('user_select');
+    const studentName = studentSelect.options[studentSelect.selectedIndex].text;
+    return confirm(`Are you sure you want to reset the password for ${studentName}?`);
+}
+
+function viewStudentDetails(studentId) {
+    const modal = new bootstrap.Modal(document.getElementById('studentDetailModal'));
+    modal.show();
+    
+    // In a real implementation, this would fetch student details via AJAX
+    document.getElementById('studentDetailContent').innerHTML = 
+        '<p>Student details for ID: ' + studentId + '</p><p>This would show detailed student information including enrollment history, attendance, etc.</p>';
+}
+
+function editStudent(studentId) {
+    alert('Edit student functionality would be implemented here for student ID: ' + studentId);
+}
+
+function toggleStudentStatus(studentId, currentStatus) {
+    const action = currentStatus ? 'deactivate' : 'activate';
+    if (confirm(`Are you sure you want to ${action} this student account?`)) {
+        // Implementation for toggling student status
+        alert(`${action} student ID: ${studentId}`);
+    }
+}
+
+function exportStudents() {
+    alert('Export functionality would be implemented here to generate CSV/Excel file');
+}
+
+// Auto-submit form when filters change
+document.querySelectorAll('#course_filter, #year_filter').forEach(select => {
+    select.addEventListener('change', function() {
+        // Auto-submit could be implemented here
+    });
+});
+</script>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.badge {
+    font-size: 0.7rem;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.7rem;
+}
+
+.modal-lg {
+    max-width: 800px;
+}
+</style>
+{% endblock %}

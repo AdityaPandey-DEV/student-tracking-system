@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+
+{% block title %}Mark Attendance - Enhanced Timetable System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-check-circle me-2"></i>Mark Attendance
+                    </h1>
+                    <p class="text-muted">Mark attendance for your classes</p>
+                </div>
+                <div>
+                    <a href="{% url 'accounts:teacher_dashboard' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Date and Class Selection -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Select Date and Class</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Date</label>
+                            <input type="date" name="date" class="form-control" value="{{ selected_date }}" onchange="this.form.submit()">
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Select Class</label>
+                            <select name="class_id" class="form-select" onchange="this.form.submit()">
+                                <option value="">Choose a class...</option>
+                                {% for entry in timetable_entries %}
+                                    <option value="{{ entry.id }}" {% if entry.id == selected_entry.id %}selected{% endif %}>
+                                        {{ entry.time_slot.start_time|time:"H:i" }} - {{ entry.time_slot.end_time|time:"H:i" }} | 
+                                        {{ entry.subject.name }} | 
+                                        {{ entry.course }} Year {{ entry.year }} Section {{ entry.section }} | 
+                                        Room {{ entry.room.room_number }}
+                                    </option>
+                                {% empty %}
+                                    <option value="">No classes scheduled for this date</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if selected_entry %}
+        <!-- Class Information -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Class Information</h5>
+                        <span class="badge bg-primary fs-6">{{ enrolled_students.count }} Students</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-2">
+                                <strong>Subject:</strong><br>
+                                <span class="text-primary">{{ selected_entry.subject.name }}</span>
+                            </div>
+                            <div class="col-md-2">
+                                <strong>Time:</strong><br>
+                                {{ selected_entry.time_slot.start_time|time:"H:i" }} - {{ selected_entry.time_slot.end_time|time:"H:i" }}
+                            </div>
+                            <div class="col-md-2">
+                                <strong>Class:</strong><br>
+                                {{ selected_entry.course }} Year {{ selected_entry.year }} Section {{ selected_entry.section }}
+                            </div>
+                            <div class="col-md-2">
+                                <strong>Room:</strong><br>
+                                {{ selected_entry.room.room_number }}
+                            </div>
+                            <div class="col-md-2">
+                                <strong>Date:</strong><br>
+                                {{ selected_date|date:"M d, Y" }}
+                            </div>
+                            <div class="col-md-2">
+                                <strong>Day:</strong><br>
+                                {{ selected_date|date:"l" }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendance Form -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Student Attendance</h5>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-success" onclick="markAllPresent()">Mark All Present</button>
+                            <button type="button" class="btn btn-danger" onclick="markAllAbsent()">Mark All Absent</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="timetable_entry_id" value="{{ selected_entry.id }}">
+                            <input type="hidden" name="date" value="{{ selected_date }}">
+                            
+                            {% if enrolled_students %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th width="10%">Roll No.</th>
+                                                <th width="40%">Student Name</th>
+                                                <th width="50%">Attendance Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for enrollment in enrolled_students %}
+                                                <tr>
+                                                    <td>
+                                                        <span class="badge bg-primary">{{ enrollment.student.roll_number }}</span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="avatar-sm me-2">
+                                                                <div class="avatar-title bg-light text-primary rounded">
+                                                                    {{ enrollment.student.user.first_name|first }}{{ enrollment.student.user.last_name|first }}
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <div class="fw-bold">{{ enrollment.student.user.get_full_name }}</div>
+                                                                <small class="text-muted">{{ enrollment.student.user.username }}</small>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div class="btn-group" role="group">
+                                                            <input type="radio" class="btn-check" name="attendance_{{ enrollment.student.id }}" id="present_{{ enrollment.student.id }}" value="present" 
+                                                                {% for student_id, status in existing_attendance.items %}{% if student_id == enrollment.student.id and status == 'present' %}checked{% endif %}{% endfor %}>
+                                                            <label class="btn btn-outline-success btn-sm" for="present_{{ enrollment.student.id }}">
+                                                                <i class="fas fa-check me-1"></i>Present
+                                                            </label>
+
+                                                            <input type="radio" class="btn-check" name="attendance_{{ enrollment.student.id }}" id="absent_{{ enrollment.student.id }}" value="absent" 
+                                                                {% for student_id, status in existing_attendance.items %}{% if student_id == enrollment.student.id and status == 'absent' %}checked{% endif %}{% endfor %}>
+                                                            <label class="btn btn-outline-danger btn-sm" for="absent_{{ enrollment.student.id }}">
+                                                                <i class="fas fa-times me-1"></i>Absent
+                                                            </label>
+
+                                                            <input type="radio" class="btn-check" name="attendance_{{ enrollment.student.id }}" id="late_{{ enrollment.student.id }}" value="late" 
+                                                                {% for student_id, status in existing_attendance.items %}{% if student_id == enrollment.student.id and status == 'late' %}checked{% endif %}{% endfor %}>
+                                                            <label class="btn btn-outline-warning btn-sm" for="late_{{ enrollment.student.id }}">
+                                                                <i class="fas fa-clock me-1"></i>Late
+                                                            </label>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="text-center mt-4">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-save me-2"></i>Save Attendance
+                                    </button>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-5">
+                                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                                    <h5 class="text-muted">No Students Enrolled</h5>
+                                    <p class="text-muted">No students are enrolled in this subject.</p>
+                                </div>
+                            {% endif %}
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-calendar-check fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Select a Class</h5>
+                        <p class="text-muted">Please select a date and class to mark attendance.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+function markAllPresent() {
+    const presentRadios = document.querySelectorAll('input[type="radio"][value="present"]');
+    presentRadios.forEach(radio => {
+        radio.checked = true;
+    });
+}
+
+function markAllAbsent() {
+    const absentRadios = document.querySelectorAll('input[type="radio"][value="absent"]');
+    absentRadios.forEach(radio => {
+        radio.checked = true;
+    });
+}
+</script>
+
+<style>
+.avatar-sm {
+    width: 40px;
+    height: 40px;
+}
+
+.avatar-title {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.btn-check:checked + .btn-outline-success {
+    background-color: #198754;
+    border-color: #198754;
+    color: white;
+}
+
+.btn-check:checked + .btn-outline-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+.btn-check:checked + .btn-outline-warning {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: black;
+}
+</style>
+{% endblock %}

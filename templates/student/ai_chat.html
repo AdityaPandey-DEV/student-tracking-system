@@ -1,0 +1,533 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Assistant - Enhanced Timetable System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-robot me-2"></i>AI Assistant
+                    </h1>
+                    <p class="text-muted">Get help with your studies and academic questions</p>
+                </div>
+                <div>
+                    <a href="{% url 'accounts:student_dashboard' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Chat Interface -->
+        <div class="col-md-8">
+            <div class="card chat-card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0">
+                                <i class="fas fa-robot me-2"></i>Study Assistant
+                            </h5>
+                            <small>Always here to help with your academic needs</small>
+                        </div>
+                        <div>
+                            <span class="badge bg-success" id="status-indicator">Online</span>
+                            <button class="btn btn-sm btn-outline-light ms-2" onclick="clearChat()">
+                                <i class="fas fa-trash"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <!-- Chat Messages Container -->
+                    <div class="chat-container" id="chatContainer">
+                        <div class="welcome-message">
+                            <div class="message ai-message">
+                                <div class="message-content">
+                                    <div class="message-header">
+                                        <i class="fas fa-robot me-1"></i>
+                                        <strong>AI Assistant</strong>
+                                        <small class="text-muted ms-2">Just now</small>
+                                    </div>
+                                    <div class="message-text">
+                                        Hello {{ student.user.get_full_name }}! 👋 I'm your AI study assistant. I can help you with:
+                                        <ul class="mt-2 mb-0">
+                                            <li>Subject explanations and concepts</li>
+                                            <li>Study schedule planning</li>
+                                            <li>Assignment guidance</li>
+                                            <li>Exam preparation tips</li>
+                                            <li>Academic questions</li>
+                                        </ul>
+                                        How can I assist you today?
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <!-- Chat Input -->
+                    <div class="chat-input">
+                        <div class="input-group">
+                            <textarea class="form-control" id="messageInput" placeholder="Ask me anything about your studies..." 
+                                      rows="2" style="resize: none;"></textarea>
+                            <button class="btn btn-primary" type="button" id="sendButton" onclick="sendMessage()">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted mt-1 d-block">
+                            <i class="fas fa-lightbulb me-1"></i>
+                            Try asking: "Help me plan my study schedule" or "Explain data structures"
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-md-4">
+            <!-- Quick Actions -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-bolt me-2"></i>Quick Help
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary btn-sm" onclick="askPredefined('What are my subjects for this semester?')">
+                            <i class="fas fa-book me-1"></i>My Subjects
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" onclick="askPredefined('Show me my attendance summary')">
+                            <i class="fas fa-chart-bar me-1"></i>Attendance Info
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" onclick="askPredefined('Help me create a study schedule')">
+                            <i class="fas fa-calendar me-1"></i>Study Planning
+                        </button>
+                        <button class="btn btn-outline-warning btn-sm" onclick="askPredefined('Give me exam preparation tips')">
+                            <i class="fas fa-graduation-cap me-1"></i>Exam Tips
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="askPredefined('What is my timetable for today?')">
+                            <i class="fas fa-clock me-1"></i>Today\'s Schedule
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Conversations -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-history me-2"></i>Recent Chats
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_chats %}
+                        {% for chat in recent_chats %}
+                            <div class="chat-history-item mb-2 p-2 rounded border" onclick="loadChat('{{ chat.session_id }}')">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <small class="fw-bold">{{ chat.chat_type|capfirst }}</small>
+                                        <br>
+                                        <small class="text-muted">{{ chat.updated_at|timesince }} ago</small>
+                                    </div>
+                                    <i class="fas fa-chevron-right text-muted"></i>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted small">No previous conversations</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Student Context -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-user me-2"></i>Your Profile
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="profile-info">
+                        <div class="info-item mb-2">
+                            <strong>{{ student.user.get_full_name }}</strong>
+                            <br>
+                            <small class="text-muted">{{ student.roll_number }}</small>
+                        </div>
+                        <div class="info-item mb-2">
+                            <i class="fas fa-graduation-cap text-primary me-1"></i>
+                            <small>{{ student.course }} - Year {{ student.year }}</small>
+                        </div>
+                        <div class="info-item mb-2">
+                            <i class="fas fa-users text-success me-1"></i>
+                            <small>Section {{ student.section }}</small>
+                        </div>
+                        <div class="info-item">
+                            <i class="fas fa-book text-info me-1"></i>
+                            <small>{{ student.enrollments.count }} Enrolled Subjects</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div class="modal fade" id="helpModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-question-circle me-2"></i>How to Use AI Assistant
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>What can I help you with?</h6>
+                    <ul>
+                        <li><strong>Academic Questions:</strong> Ask about concepts, formulas, or explanations</li>
+                        <li><strong>Study Planning:</strong> Get help creating study schedules and plans</li>
+                        <li><strong>Assignment Help:</strong> Guidance on assignments and projects</li>
+                        <li><strong>Exam Preparation:</strong> Tips and strategies for exams</li>
+                        <li><strong>Personal Schedule:</strong> Questions about your timetable and subjects</li>
+                    </ul>
+                    
+                    <h6 class="mt-3">Example Questions:</h6>
+                    <div class="example-questions">
+                        <span class="badge bg-light text-dark me-1 mb-1">"What are data structures?"</span>
+                        <span class="badge bg-light text-dark me-1 mb-1">"Help me study for calculus"</span>
+                        <span class="badge bg-light text-dark me-1 mb-1">"Create a study plan for next week"</span>
+                        <span class="badge bg-light text-dark me-1 mb-1">"Explain object-oriented programming"</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentSessionId = 'session_' + Date.now();
+let isWaitingForResponse = false;
+
+// Send message function
+function sendMessage() {
+    const messageInput = document.getElementById('messageInput');
+    const message = messageInput.value.trim();
+    
+    if (!message || isWaitingForResponse) return;
+    
+    // Add user message to chat
+    addMessage(message, 'user');
+    
+    // Clear input
+    messageInput.value = '';
+    
+    // Show typing indicator
+    showTypingIndicator();
+    
+    // Send to backend
+    fetch("{% url 'accounts:student_ai_chat' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            message: message,
+            session_id: currentSessionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideTypingIndicator();
+        if (data.response) {
+            addMessage(data.response, 'ai');
+        } else if (data.error) {
+            addMessage('Sorry, I encountered an error. Please try again.', 'ai');
+        }
+    })
+    .catch(error => {
+        hideTypingIndicator();
+        addMessage('Sorry, I couldn\'t process your request. Please check your connection and try again.', 'ai');
+        console.error('Error:', error);
+    });
+}
+
+// Add message to chat
+function addMessage(text, sender) {
+    const chatContainer = document.getElementById('chatContainer');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message ' + (sender === 'user' ? 'user-message' : 'ai-message');
+    
+    const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    const senderName = sender === 'user' ? '{{ student.user.get_full_name }}' : 'AI Assistant';
+    const icon = sender === 'user' ? 'fas fa-user' : 'fas fa-robot';
+    
+    messageDiv.innerHTML = `
+        <div class="message-content">
+            <div class="message-header">
+                <i class="${icon} me-1"></i>
+                <strong>${senderName}</strong>
+                <small class="text-muted ms-2">${time}</small>
+            </div>
+            <div class="message-text">${text}</div>
+        </div>
+    `;
+    
+    chatContainer.appendChild(messageDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// Show typing indicator
+function showTypingIndicator() {
+    isWaitingForResponse = true;
+    const chatContainer = document.getElementById('chatContainer');
+    const typingDiv = document.createElement('div');
+    typingDiv.id = 'typingIndicator';
+    typingDiv.className = 'message ai-message';
+    typingDiv.innerHTML = `
+        <div class="message-content">
+            <div class="message-header">
+                <i class="fas fa-robot me-1"></i>
+                <strong>AI Assistant</strong>
+                <small class="text-muted ms-2">typing...</small>
+            </div>
+            <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    `;
+    
+    chatContainer.appendChild(typingDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    document.getElementById('sendButton').disabled = true;
+}
+
+// Hide typing indicator
+function hideTypingIndicator() {
+    isWaitingForResponse = false;
+    const typingIndicator = document.getElementById('typingIndicator');
+    if (typingIndicator) {
+        typingIndicator.remove();
+    }
+    document.getElementById('sendButton').disabled = false;
+}
+
+// Ask predefined question
+function askPredefined(question) {
+    document.getElementById('messageInput').value = question;
+    sendMessage();
+}
+
+// Clear chat
+function clearChat() {
+    if (confirm('Are you sure you want to clear the chat?')) {
+        const chatContainer = document.getElementById('chatContainer');
+        chatContainer.innerHTML = `
+            <div class="welcome-message">
+                <div class="message ai-message">
+                    <div class="message-content">
+                        <div class="message-header">
+                            <i class="fas fa-robot me-1"></i>
+                            <strong>AI Assistant</strong>
+                            <small class="text-muted ms-2">Just now</small>
+                        </div>
+                        <div class="message-text">
+                            Chat cleared! How can I help you today?
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        currentSessionId = 'session_' + Date.now();
+    }
+}
+
+// Load previous chat
+function loadChat(sessionId) {
+    // This would load a previous chat session
+    alert('Loading chat session: ' + sessionId);
+}
+
+// Enter key support
+document.getElementById('messageInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+// Auto-resize textarea
+document.getElementById('messageInput').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = (this.scrollHeight) + 'px';
+});
+</script>
+
+<style>
+.chat-card {
+    height: calc(100vh - 200px);
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-container {
+    height: 400px;
+    overflow-y: auto;
+    padding: 20px;
+    background-color: #f8f9fa;
+}
+
+.message {
+    margin-bottom: 20px;
+    display: flex;
+}
+
+.user-message {
+    justify-content: flex-end;
+}
+
+.ai-message {
+    justify-content: flex-start;
+}
+
+.message-content {
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    position: relative;
+}
+
+.user-message .message-content {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.ai-message .message-content {
+    background: white;
+    color: #333;
+    border: 1px solid #dee2e6;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.message-header {
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+    opacity: 0.9;
+}
+
+.message-text {
+    line-height: 1.4;
+}
+
+.message-text ul {
+    margin: 8px 0;
+    padding-left: 20px;
+}
+
+.chat-input {
+    background: white;
+}
+
+.chat-history-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.chat-history-item:hover {
+    background-color: #e9ecef;
+}
+
+.profile-info {
+    font-size: 0.9rem;
+}
+
+.info-item {
+    border-bottom: 1px solid #f0f0f0;
+    padding-bottom: 8px;
+}
+
+.info-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 0;
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #007bff;
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+.typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typing {
+    0%, 80%, 100% { 
+        transform: scale(0);
+        opacity: 0.3;
+    } 
+    40% { 
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.welcome-message {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.example-questions .badge {
+    cursor: pointer;
+    font-size: 0.75rem;
+}
+
+.example-questions .badge:hover {
+    background-color: #e9ecef !important;
+}
+
+#status-indicator {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+@media (max-width: 768px) {
+    .chat-card {
+        height: calc(100vh - 150px);
+    }
+    
+    .chat-container {
+        height: 300px;
+        padding: 15px;
+    }
+    
+    .message-content {
+        max-width: 90%;
+    }
+}
+</style>
+{% endblock %}
