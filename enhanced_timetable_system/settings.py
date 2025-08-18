@@ -233,6 +233,11 @@ else:
 # OpenAI Configuration
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 
+# Groq (free) AI provider configuration
+GROQ_API_KEY = config('GROQ_API_KEY', default='')
+GROQ_BASE_URL = config('GROQ_BASE_URL', default='https://api.groq.com/openai/v1')
+GROQ_MODEL = config('GROQ_MODEL', default='llama-3.1-8b-instant')
+
 # Twilio Configuration
 TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')
 TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')
