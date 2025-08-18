@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Announcement{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row">
+    <div class="col-lg-8 mx-auto">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="fas fa-bullhorn me-2"></i>Edit Announcement</h5>
+          <a href="{% url 'accounts:manage_announcements' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back
+          </a>
+        </div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label">Title</label>
+              <input type="text" class="form-control" name="title" value="{{ announcement.title }}" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Content</label>
+              <textarea class="form-control" name="content" rows="6" required>{{ announcement.content }}</textarea>
+            </div>
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label class="form-label">Audience</label>
+                <select class="form-select" name="target_audience">
+                  <option value="all" {% if announcement.target_audience == 'all' %}selected{% endif %}>All</option>
+                  <option value="course" {% if announcement.target_audience == 'course' %}selected{% endif %}>Course</option>
+                  <option value="year" {% if announcement.target_audience == 'year' %}selected{% endif %}>Year</option>
+                  <option value="section" {% if announcement.target_audience == 'section' %}selected{% endif %}>Section</option>
+                </select>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label">Course</label>
+                <select class="form-select" name="target_course">
+                  <option value="">—</option>
+                  {% for course in courses %}
+                    <option value="{{ course.name }}" {% if announcement.target_course == course.name %}selected{% endif %}>{{ course.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-2 mb-3">
+                <label class="form-label">Year</label>
+                <input type="number" class="form-control" name="target_year" value="{{ announcement.target_year|default_if_none:'' }}">
+              </div>
+              <div class="col-md-2 mb-3">
+                <label class="form-label">Section</label>
+                <input type="text" class="form-control" name="target_section" value="{{ announcement.target_section }}">
+              </div>
+            </div>
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" name="is_urgent" id="isUrgent" {% if announcement.is_urgent %}checked{% endif %}>
+              <label class="form-check-label" for="isUrgent">
+                Mark as urgent
+              </label>
+            </div>
+            <div class="text-end">
+              <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+

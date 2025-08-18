@@ -458,6 +458,32 @@ def manage_announcements(request):
 
 @login_required
 @admin_required
+def edit_announcement(request, announcement_id):
+    """Edit an existing announcement."""
+    announcement = get_object_or_404(Announcement, id=announcement_id)
+    if request.method == 'POST':
+        try:
+            announcement.title = request.POST.get('title', announcement.title)
+            announcement.content = request.POST.get('content', announcement.content)
+            announcement.target_audience = request.POST.get('target_audience', announcement.target_audience)
+            announcement.target_course = request.POST.get('target_course', announcement.target_course)
+            target_year = request.POST.get('target_year')
+            announcement.target_year = int(target_year) if target_year else None
+            announcement.target_section = request.POST.get('target_section', announcement.target_section)
+            announcement.is_urgent = bool(request.POST.get('is_urgent'))
+            announcement.save()
+            messages.success(request, 'Announcement updated successfully!')
+            return redirect('accounts:manage_announcements')
+        except Exception:
+            messages.error(request, 'Failed to update announcement. Please check your inputs.')
+    courses = Course.objects.filter(is_active=True)
+    return render(request, 'admin/edit_announcement.html', {
+        'announcement': announcement,
+        'courses': courses,
+    })
+
+@login_required
+@admin_required
 def ai_analytics(request):
     """AI-powered analytics dashboard."""
     

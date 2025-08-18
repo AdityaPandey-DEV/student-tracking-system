@@ -10,7 +10,7 @@ from .student_views import (
 )
 from .admin_views import (
     admin_dashboard, manage_courses, manage_teachers, manage_timetable, 
-    manage_students, manage_announcements, ai_analytics
+    manage_students, manage_announcements, ai_analytics, edit_announcement
 )
 from .teacher_views import (
     teacher_dashboard, teacher_timetable, teacher_classes, teacher_students,
@@ -49,6 +49,7 @@ urlpatterns = [
     path('admin/timetable/', manage_timetable, name='manage_timetable'),
     path('admin/students/', manage_students, name='manage_students'),
     path('admin/announcements/', manage_announcements, name='manage_announcements'),
+    path('admin/announcements/edit/<int:announcement_id>/', edit_announcement, name='edit_announcement'),
     path('admin/ai-analytics/', ai_analytics, name='ai_analytics'),
     
     # Teacher URLs
