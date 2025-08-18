@@ -24,7 +24,14 @@ def admin_required_api(view_func):
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
-        if not hasattr(request.user, 'adminprofile'):
+        # Allow if user has an admin profile OR is superuser/staff OR user_type indicates admin
+        is_admin_user = (
+            hasattr(request.user, 'adminprofile') or
+            getattr(request.user, 'is_superuser', False) or
+            getattr(request.user, 'is_staff', False) or
+            getattr(request.user, 'user_type', '') == 'admin'
+        )
+        if not is_admin_user:
             return JsonResponse({'success': False, 'message': 'Admin access required'}, status=403)
         return view_func(request, *args, **kwargs)
     return wrapper
