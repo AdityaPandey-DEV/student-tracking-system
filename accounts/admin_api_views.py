@@ -145,7 +145,7 @@ def get_student_details(request, student_id):
         attendance_percentage = (present_attendance / total_attendance * 100) if total_attendance > 0 else 0
         
         student_data = {
-            'id': student.id,
+            'id': student.pk,
             'name': student.user.get_full_name(),
             'roll_number': student.roll_number,
             'course': student.course,
@@ -182,7 +182,7 @@ def toggle_student_status(request, student_id):
         student.user.save()
         
         # Broadcast change for real-time sync
-        cache.set(f'student_status_updated_{student.id}', True, timeout=300)
+        cache.set(f'student_status_updated_{student.pk}', True, timeout=300)
         
         status = 'activated' if student.user.is_active else 'deactivated'
         return JsonResponse({'success': True, 'message': f'Student {status} successfully'})

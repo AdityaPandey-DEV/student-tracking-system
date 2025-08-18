@@ -146,21 +146,21 @@
                                                     </td>
                                                     <td>
                                                         <div class="btn-group" role="group">
-                                                            <input type="radio" class="btn-check" name="attendance_{{ enrollment.student.id }}" id="present_{{ enrollment.student.id }}" value="present" 
-                                                                {% for student_id, status in existing_attendance.items %}{% if student_id == enrollment.student.id and status == 'present' %}checked{% endif %}{% endfor %}>
-                                                            <label class="btn btn-outline-success btn-sm" for="present_{{ enrollment.student.id }}">
+                                                            <input type="radio" class="btn-check" name="attendance_{{ enrollment.student.pk }}" id="present_{{ enrollment.student.pk }}" value="present" 
+                                                                {% for student_id, status in existing_attendance.items %}{% if student_id == enrollment.student.pk and status == 'present' %}checked{% endif %}{% endfor %}>
+                                                            <label class="btn btn-outline-success btn-sm" for="present_{{ enrollment.student.pk }}">
                                                                 <i class="fas fa-check me-1"></i>Present
                                                             </label>
 
-                                                            <input type="radio" class="btn-check" name="attendance_{{ enrollment.student.id }}" id="absent_{{ enrollment.student.id }}" value="absent" 
-                                                                {% for student_id, status in existing_attendance.items %}{% if student_id == enrollment.student.id and status == 'absent' %}checked{% endif %}{% endfor %}>
-                                                            <label class="btn btn-outline-danger btn-sm" for="absent_{{ enrollment.student.id }}">
+                                                            <input type="radio" class="btn-check" name="attendance_{{ enrollment.student.pk }}" id="absent_{{ enrollment.student.pk }}" value="absent" 
+                                                                {% for student_id, status in existing_attendance.items %}{% if student_id == enrollment.student.pk and status == 'absent' %}checked{% endif %}{% endfor %}>
+                                                            <label class="btn btn-outline-danger btn-sm" for="absent_{{ enrollment.student.pk }}">
                                                                 <i class="fas fa-times me-1"></i>Absent
                                                             </label>
 
-                                                            <input type="radio" class="btn-check" name="attendance_{{ enrollment.student.id }}" id="late_{{ enrollment.student.id }}" value="late" 
-                                                                {% for student_id, status in existing_attendance.items %}{% if student_id == enrollment.student.id and status == 'late' %}checked{% endif %}{% endfor %}>
-                                                            <label class="btn btn-outline-warning btn-sm" for="late_{{ enrollment.student.id }}">
+                                                            <input type="radio" class="btn-check" name="attendance_{{ enrollment.student.pk }}" id="late_{{ enrollment.student.pk }}" value="late" 
+                                                                {% for student_id, status in existing_attendance.items %}{% if student_id == enrollment.student.pk and status == 'late' %}checked{% endif %}{% endfor %}>
+                                                            <label class="btn btn-outline-warning btn-sm" for="late_{{ enrollment.student.pk }}">
                                                                 <i class="fas fa-clock me-1"></i>Late
                                                             </label>
                                                         </div>

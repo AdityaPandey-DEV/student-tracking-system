@@ -64,7 +64,7 @@ def get_class_students(request, class_id):
         students = []
         for enrollment in enrollments:
             students.append({
-                'id': enrollment.student.id,
+                'id': enrollment.student.pk,
                 'name': enrollment.student.user.get_full_name(),
                 'roll_number': enrollment.student.roll_number,
                 'email': enrollment.student.user.email
@@ -330,7 +330,7 @@ def get_class_details(request, class_id):
             attendance_percentage = (present_classes / total_classes_student * 100) if total_classes_student > 0 else 0
             
             students.append({
-                'id': enrollment.student.id,
+                'id': enrollment.student.pk,
                 'name': enrollment.student.user.get_full_name(),
                 'roll_number': enrollment.student.roll_number,
                 'attendance_percentage': round(attendance_percentage, 1)

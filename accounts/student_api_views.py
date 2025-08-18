@@ -340,7 +340,7 @@ def get_dashboard_stats(request):
 def check_student_updates(request):
     """Check for real-time updates for student interface."""
     try:
-        student_id = request.student.id
+        student_id = request.student.pk
         course_section = f"{request.student.course}_{request.student.year}_{request.student.section}"
         
         updates = {

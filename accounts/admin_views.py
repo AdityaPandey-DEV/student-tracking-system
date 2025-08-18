@@ -371,7 +371,7 @@ def manage_students(request):
                 
                 # Broadcast change for real-time sync
                 from django.core.cache import cache
-                cache.set(f'student_status_updated_{student.id}', True, timeout=300)
+                cache.set(f'student_status_updated_{student.pk}', True, timeout=300)
                 
                 status = 'activated' if student.user.is_active else 'deactivated'
                 messages.success(request, f'Student {student.roll_number} {status} successfully!')

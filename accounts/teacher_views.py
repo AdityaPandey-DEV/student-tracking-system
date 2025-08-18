@@ -356,7 +356,7 @@ def mark_attendance(request):
             
             with transaction.atomic():
                 for enrollment in enrolled_students:
-                    student_id = str(enrollment.student.id)
+                    student_id = str(enrollment.student.pk)
                     status = request.POST.get(f'attendance_{student_id}', 'absent')
                     
                     # Create or update attendance record
@@ -415,9 +415,9 @@ def mark_attendance(request):
                     timetable_entry=selected_entry,
                     date=selected_date_obj
                 )
-                existing_attendance[enrollment.student.id] = attendance.status
+                existing_attendance[enrollment.student.pk] = attendance.status
             except Attendance.DoesNotExist:
-                existing_attendance[enrollment.student.id] = 'present'  # Default
+                existing_attendance[enrollment.student.pk] = 'present'  # Default
     
     context = {
         'teacher': teacher,
