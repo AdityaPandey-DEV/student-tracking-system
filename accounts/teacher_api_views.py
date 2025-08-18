@@ -105,7 +105,7 @@ def save_attendance(request):
         with transaction.atomic():
             saved_count = 0
             for student_id, status in attendance_data.items():
-                student = get_object_or_404(StudentProfile, id=student_id)
+                student = get_object_or_404(StudentProfile, pk=student_id)
                 
                 attendance, created = Attendance.objects.get_or_create(
                     student=student,

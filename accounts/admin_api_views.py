@@ -121,7 +121,7 @@ def delete_teacher_assignment(request, assignment_id):
 def get_student_details(request, student_id):
     """Get student details for modal display."""
     try:
-        student = get_object_or_404(StudentProfile, id=student_id)
+        student = get_object_or_404(StudentProfile, pk=student_id)
         
         # Get enrollments
         enrollments = Enrollment.objects.filter(
@@ -176,7 +176,7 @@ def toggle_student_status(request, student_id):
     """Toggle student account status."""
     try:
         data = json.loads(request.body)
-        student = get_object_or_404(StudentProfile, id=student_id)
+        student = get_object_or_404(StudentProfile, pk=student_id)
         
         student.user.is_active = data.get('is_active', True)
         student.user.save()

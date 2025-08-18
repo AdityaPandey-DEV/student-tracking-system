@@ -52,9 +52,9 @@ def get_announcement_details(request, announcement_id):
 def delete_announcement(request, announcement_id):
     """Delete announcement via AJAX"""
     try:
-        # Mock deletion - replace with actual model deletion
-        # announcement = get_object_or_404(Announcement, id=announcement_id)
-        # announcement.delete()
+        announcement = get_object_or_404(Announcement, id=announcement_id)
+        announcement.is_active = False
+        announcement.save()
         
         return JsonResponse({
             'success': True,

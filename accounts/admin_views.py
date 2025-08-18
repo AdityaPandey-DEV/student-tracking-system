@@ -333,7 +333,7 @@ def manage_students(request):
         
         if action == 'enroll_student':
             try:
-                student = get_object_or_404(StudentProfile, id=request.POST.get('student_id'))
+                student = get_object_or_404(StudentProfile, pk=request.POST.get('student_id'))
                 subject = get_object_or_404(Subject, id=request.POST.get('subject_id'))
                 
                 Enrollment.objects.get_or_create(
@@ -365,7 +365,7 @@ def manage_students(request):
                 
         elif action == 'toggle_student_status':
             try:
-                student = get_object_or_404(StudentProfile, id=request.POST.get('student_id'))
+                student = get_object_or_404(StudentProfile, pk=request.POST.get('student_id'))
                 student.user.is_active = not student.user.is_active
                 student.user.save()
                 
