@@ -569,58 +569,57 @@ def user_logout(request):
     return redirect('accounts:landing')
 
 def forgot_password(request):
-    """Forgot password - step 1: Enter user ID."""
+    """Forgot password - send OTP to user's email for verification."""
     if request.method == 'POST':
         user_id = request.POST.get('user_id', '').strip()
         user_type = request.POST.get('user_type', 'student')
         
         if not user_id:
-            messages.error(request, 'Please enter your user ID.')
+            messages.error(request, 'Please enter your user ID or email.')
             return render(request, 'accounts/forgot_password.html')
         
         user = None
-        try:
-            # First try to find user by username (normalize for student/admin)
-            lookup_id = user_id.upper() if user_type in ['student', 'admin'] else user_id
-            user = User.objects.get(username=lookup_id, user_type=user_type)
-        except User.DoesNotExist:
-            # For teachers, also try to find by email (since some teachers use email as username)
-            if user_type == 'teacher' and '@' in user_id:
-                try:
-                    user = User.objects.get(email=user_id, user_type='teacher')
-                except User.DoesNotExist:
-                    pass
+        # Try email lookup first if it looks like an email
+        if '@' in user_id:
+            try:
+                user = User.objects.get(email=user_id.lower(), user_type=user_type)
+            except User.DoesNotExist:
+                user = None
+        
+        # Fallback to username lookup (normalize for student/admin)
+        if user is None:
+            try:
+                lookup_id = user_id.upper() if user_type in ['student', 'admin'] else user_id
+                user = User.objects.get(username=lookup_id, user_type=user_type)
+            except User.DoesNotExist:
+                user = None
         
         if user:
-            # Check if user has phone number for SMS OTP
-            if not user.phone_number:
-                messages.error(request, 'No phone number registered with this account. Please contact administrator.')
+            if not user.email:
+                messages.error(request, 'No email is registered with this account. Please contact administrator.')
                 return render(request, 'accounts/forgot_password.html')
             
-            # Generate OTP
-            otp_code = OTP.generate_otp(user.phone_number, 'password_reset')
+            # Generate Email OTP for password reset
+            otp_code = EmailOTP.generate_otp(user.email, 'password_reset')
             
-            # Send OTP
-            if send_otp_notification(user.phone_number, otp_code, 'password_reset'):
-                request.session['reset_phone'] = user.phone_number
+            # Send Email OTP
+            if send_otp_notification(user.email, otp_code, 'password_reset', method='email'):
+                request.session['reset_email'] = user.email
                 request.session['reset_user_id'] = user.username  # Always store actual username
                 request.session['reset_user_type'] = user_type
                 
-                messages.info(request, f'OTP sent to your registered phone number ending in ***{user.phone_number[-3:]}')
+                messages.info(request, f'OTP sent to your registered email {user.email}.')
                 return redirect('accounts:verify_otp')
             else:
-                messages.error(request, 'Failed to send OTP. Please try again later.')
+                messages.error(request, 'Failed to send OTP email. Please try again later.')
         else:
-            if user_type == 'teacher':
-                messages.error(request, 'Employee ID or Email not found. Please check and try again.')
-            else:
-                messages.error(request, 'User ID not found.')
+            messages.error(request, 'Account not found. Please check your details and try again.')
     
     return render(request, 'accounts/forgot_password.html')
 
 def verify_otp(request):
-    """Verify OTP for password reset."""
-    if 'reset_phone' not in request.session:
+    """Verify Email OTP for password reset."""
+    if 'reset_email' not in request.session:
         messages.error(request, 'Invalid session. Please start the password reset process again.')
         return redirect('accounts:forgot_password')
     
@@ -631,9 +630,9 @@ def verify_otp(request):
             messages.error(request, 'Please enter the OTP.')
             return render(request, 'accounts/verify_otp.html')
         
-        phone_number = request.session['reset_phone']
+        email = request.session['reset_email']
         
-        if OTP.verify_otp(phone_number, otp_code, 'password_reset'):
+        if EmailOTP.verify_otp(email, otp_code, 'password_reset'):
             messages.success(request, 'OTP verified successfully. Please set your new password.')
             return redirect('accounts:reset_password')
         else:
@@ -643,7 +642,7 @@ def verify_otp(request):
 
 def reset_password(request):
     """Reset password after OTP verification."""
-    if 'reset_phone' not in request.session or 'reset_user_id' not in request.session:
+    if 'reset_email' not in request.session or 'reset_user_id' not in request.session:
         messages.error(request, 'Invalid session. Please start the password reset process again.')
         return redirect('accounts:forgot_password')
     
@@ -672,7 +671,7 @@ def reset_password(request):
             user.save()
             
             # Clear session
-            del request.session['reset_phone']
+            del request.session['reset_email']
             del request.session['reset_user_id']
             del request.session['reset_user_type']
             
