@@ -36,6 +36,7 @@ urlpatterns = [
     path('admin/assignments/<int:assignment_id>/delete/', admin_api_views.delete_teacher_assignment, name='admin_delete_assignment'),
     path('admin/students/<int:student_id>/', admin_api_views.get_student_details, name='admin_student_details'),
     path('admin/students/<int:student_id>/toggle-status/', admin_api_views.toggle_student_status, name='admin_toggle_student_status'),
+    path('admin/students/<int:student_id>/update/', admin_api_views.update_student, name='admin_update_student'),
     path('admin/students/export/', admin_api_views.export_students, name='admin_export_students'),
     path('admin/timetable/<int:entry_id>/', admin_api_views.get_timetable_entry, name='admin_timetable_entry'),
     path('admin/timetable/<int:entry_id>/update/', admin_api_views.update_timetable_entry, name='admin_update_timetable_entry'),

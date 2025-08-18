@@ -359,8 +359,115 @@ class StudentManagement {
     
     // Edit student information
     static editStudent(studentId) {
-        alert(`Edit student functionality for ID: ${studentId} would be implemented with a form similar to teacher editing.`);
-        // Implementation similar to editTeacher but with student fields
+        const existing = document.getElementById('editStudentModal');
+        const modalEl = existing || document.createElement('div');
+        if (!existing) {
+            modalEl.className = 'modal fade';
+            modalEl.id = 'editStudentModal';
+            modalEl.innerHTML = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Edit Student</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body" id="editStudentContent"></div>
+                    </div>
+                </div>`;
+            document.body.appendChild(modalEl);
+        }
+        const modal = new bootstrap.Modal(modalEl);
+        const content = document.getElementById('editStudentContent');
+        content.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>`;
+        modal.show();
+
+        fetch(`/api/admin/students/${studentId}/`, {
+            headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) { content.innerHTML = `<div class="alert alert-danger">${data.message || 'Failed to load student'}</div>`; return; }
+            const s = data.student;
+            content.innerHTML = `
+                <form id="editStudentForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">First Name</label>
+                            <input type="text" class="form-control" name="first_name" value="${s.name.split(' ')[0] || ''}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Last Name</label>
+                            <input type="text" class="form-control" name="last_name" value="${s.name.split(' ').slice(1).join(' ')}">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" name="email" value="${s.email}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Phone</label>
+                            <input type="text" class="form-control" name="phone_number" value="${s.phone || ''}">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Roll Number</label>
+                            <input type="text" class="form-control" name="roll_number" value="${s.roll_number}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Course</label>
+                            <input type="text" class="form-control" name="course" value="${s.course}">
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label">Year</label>
+                            <input type="number" class="form-control" name="year" value="${s.year}">
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label">Section</label>
+                            <input type="text" class="form-control" name="section" value="${s.section}">
+                        </div>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="is_active" id="studentActive" ${s.is_active ? 'checked' : ''}>
+                        <label class="form-check-label" for="studentActive">Active</label>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success"><i class="fas fa-save me-1"></i>Save Changes</button>
+                    </div>
+                </form>`;
+
+            document.getElementById('editStudentForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const btn = this.querySelector('button[type="submit"]');
+                const orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+                const formData = new FormData(this);
+                fetch(`/api/admin/students/${studentId}/update/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value },
+                    body: formData
+                })
+                .then(r => r.json())
+                .then(resp => {
+                    if (resp.success) {
+                        showToast('Student updated successfully', 'success');
+                        modal.hide();
+                        location.reload();
+                    } else {
+                        showToast('Error updating student: ' + (resp.message || 'Unknown error'), 'error');
+                    }
+                })
+                .catch(err => { showToast('Error updating student', 'error'); console.error(err); })
+                .finally(() => { btn.disabled = false; btn.innerHTML = orig; });
+            });
+        })
+        .catch(err => { content.innerHTML = `<div class=\"alert alert-danger\">Failed to load student</div>`; console.error(err); });
     }
     
     // Toggle student account status

@@ -226,6 +226,54 @@ def export_students(request):
 
 @login_required
 @admin_required_api
+@require_http_methods(["POST"])
+def update_student(request, student_id):
+    """Update student profile and basic user fields."""
+    try:
+        student = get_object_or_404(StudentProfile, pk=student_id)
+        user = student.user
+
+        # Read from POST (form-data)
+        first_name = request.POST.get('first_name', user.first_name)
+        last_name = request.POST.get('last_name', user.last_name)
+        email = request.POST.get('email', user.email)
+        phone_number = request.POST.get('phone_number', getattr(user, 'phone_number', ''))
+        roll_number = request.POST.get('roll_number', student.roll_number)
+        course = request.POST.get('course', student.course)
+        year = request.POST.get('year', student.year)
+        section = request.POST.get('section', student.section)
+        is_active = request.POST.get('is_active')
+
+        # Update user fields
+        user.first_name = first_name
+        user.last_name = last_name
+        user.email = email
+        if hasattr(user, 'phone_number'):
+            user.phone_number = phone_number
+        if is_active is not None:
+            user.is_active = str(is_active).lower() in ['1', 'true', 'yes', 'on']
+        user.save()
+
+        # Update student profile
+        student.roll_number = roll_number.upper()
+        student.course = course
+        try:
+            student.year = int(year)
+        except (TypeError, ValueError):
+            pass
+        student.section = section.upper()
+        student.save()
+
+        # Broadcast change for real-time sync
+        cache.set(f'student_status_updated_{student.pk}', True, timeout=300)
+
+        return JsonResponse({'success': True, 'message': 'Student updated successfully'})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@login_required
+@admin_required_api
 @require_http_methods(["GET"])
 def get_timetable_entry(request, entry_id):
     """Get timetable entry details for editing."""
