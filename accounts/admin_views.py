@@ -269,28 +269,99 @@ def manage_timetable(request):
                         'conflicts_resolved': existing_entries
                     }
                 
-                # Build a simple suggested grid from DB subjects/time slots
+                # Build a suggested grid from DB subjects/time slots with teacher constraints
                 subjects_for_class = Subject.objects.filter(
                     is_active=True,
                     course__name=course,
                     year=year
                 ).order_by('code')
-                slots = TimeSlot.objects.filter(is_active=True).order_by('period_number')
+                # Map subject -> teacher via TeacherSubject
+                teacher_subjects = TeacherSubject.objects.filter(
+                    is_active=True,
+                    subject__in=subjects_for_class
+                ).select_related('subject', 'teacher')
+                subject_items = []
+                seen_subject_ids = set()
+                for ts in teacher_subjects:
+                    subject_items.append({
+                        'subject_id': ts.subject.id,
+                        'subject_code': ts.subject.code,
+                        'subject_name': ts.subject.name,
+                        'teacher_id': ts.teacher.id,
+                        'teacher_name': ts.teacher.name,
+                    })
+                    seen_subject_ids.add(ts.subject.id)
+                # Subjects without explicit teacher mapping (fallback)
+                for subj in subjects_for_class:
+                    if subj.id not in seen_subject_ids:
+                        subject_items.append({
+                            'subject_id': subj.id,
+                            'subject_code': subj.code,
+                            'subject_name': subj.name,
+                            'teacher_id': None,
+                            'teacher_name': ''
+                        })
+                slots = list(TimeSlot.objects.filter(is_active=True).order_by('period_number'))
                 days = [1, 2, 3, 4, 5]  # Mon-Fri
-                subject_list = list(subjects_for_class.values('id', 'code', 'name'))
+                # Existing teacher commitments to avoid double-booking
+                existing = TimetableEntry.objects.filter(is_active=True).select_related('teacher', 'time_slot')
+                busy = set()
+                for e in existing:
+                    busy.add((e.teacher_id, e.day_of_week, e.time_slot.period_number))
+                # Limit consecutive periods for a teacher
+                max_consecutive = 2
+                teacher_last_period = {}  # (teacher_id, day) -> last period number
+                teacher_consec = {}       # (teacher_id, day) -> consecutive count
                 grid = {}
-                if subject_list and slots:
+                if subject_items and slots:
                     si = 0
                     for day in days:
                         day_rows = []
                         for slot in slots:
-                            subj = subject_list[si % len(subject_list)]
-                            day_rows.append({
-                                'period_number': slot.period_number,
-                                'subject_code': subj['code'],
-                                'subject_name': subj['name']
-                            })
-                            si += 1
+                            placed = False
+                            attempts = 0
+                            # Try up to len(subject_items) to find a feasible subject
+                            while attempts < len(subject_items) and not placed:
+                                item = subject_items[si % len(subject_items)]
+                                si += 1
+                                attempts += 1
+                                t_id = item['teacher_id']
+                                # Check teacher availability (if known)
+                                if t_id and (t_id, day, slot.period_number) in busy:
+                                    continue
+                                # Check consecutive limit
+                                if t_id:
+                                    key = (t_id, day)
+                                    last = teacher_last_period.get(key)
+                                    consec = teacher_consec.get(key, 0)
+                                    if last is not None and slot.period_number == last + 1 and consec >= max_consecutive:
+                                        # Would exceed limit
+                                        continue
+                                # Place subject
+                                day_rows.append({
+                                    'period_number': slot.period_number,
+                                    'subject_code': item['subject_code'],
+                                    'subject_name': item['subject_name'],
+                                    'teacher_name': item['teacher_name']
+                                })
+                                placed = True
+                                # Update teacher state
+                                if t_id:
+                                    key = (t_id, day)
+                                    last = teacher_last_period.get(key)
+                                    if last is not None and slot.period_number == last + 1:
+                                        teacher_consec[key] = teacher_consec.get(key, 0) + 1
+                                    else:
+                                        teacher_consec[key] = 1
+                                    teacher_last_period[key] = slot.period_number
+                            if not placed:
+                                # Leave free if no feasible assignment
+                                day_rows.append({
+                                    'period_number': slot.period_number,
+                                    'subject_code': '-',
+                                    'subject_name': 'Free Period',
+                                    'teacher_name': ''
+                                })
                         grid[str(day)] = day_rows
                 
                 # Create timetable suggestion

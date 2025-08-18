@@ -1054,7 +1054,7 @@ function renderSuggestionGrid(grid) {
         rowSlots.forEach(s => { rowMap[s.period_number] = s; });
         const cells = sortedPeriods.map(p => {
             const s = rowMap[p];
-            return `<td class="text-center">${s ? `<strong>${s.subject_code}</strong><br><small>${s.subject_name}</small>` : '-'}</td>`;
+            return `<td class="text-center">${s ? `<strong>${s.subject_code}</strong><br><small>${s.subject_name}${s.teacher_name ? '<br><em class=\'text-muted\'>' + s.teacher_name + '</em>' : ''}</small>` : '-'}</td>`;
         }).join('');
         return `<tr><td><strong>${dayMap[day] || day}</strong></td>${cells}</tr>`;
     }).join('') + '</tbody>';
