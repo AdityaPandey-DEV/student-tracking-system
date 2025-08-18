@@ -530,8 +530,12 @@ def user_login(request):
                 except User.DoesNotExist:
                     pass
         else:
-            # For students and admins, use direct username authentication
-            user = authenticate(request, username=user_id, password=password)
+            # For students and admins, normalize to uppercase (IDs are stored uppercase)
+            normalized_id = user_id.upper()
+            user = authenticate(request, username=normalized_id, password=password)
+            if user is None and user_id != normalized_id:
+                # Fallback: try as-is just in case
+                user = authenticate(request, username=user_id, password=password)
         
         if user is not None:
             if user.is_active:
@@ -576,8 +580,9 @@ def forgot_password(request):
         
         user = None
         try:
-            # First try to find user by username
-            user = User.objects.get(username=user_id, user_type=user_type)
+            # First try to find user by username (normalize for student/admin)
+            lookup_id = user_id.upper() if user_type in ['student', 'admin'] else user_id
+            user = User.objects.get(username=lookup_id, user_type=user_type)
         except User.DoesNotExist:
             # For teachers, also try to find by email (since some teachers use email as username)
             if user_type == 'teacher' and '@' in user_id:

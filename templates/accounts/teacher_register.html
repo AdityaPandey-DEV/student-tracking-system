@@ -128,7 +128,7 @@
                         <div class="mb-3">
                             <div class="form-floating">
                                 <input type="text" class="form-control text-uppercase" id="employee_id" name="employee_id" 
-                                       placeholder="Employee ID (Optional)" pattern="[A-Z0-9]*">
+                                       placeholder="Employee ID (Optional)" pattern="[A-Z0-9]*" oninput="this.value = this.value.toUpperCase()">
                                 <label for="employee_id">
                                     <i class="fas fa-id-badge me-2"></i>Employee ID (Optional)
                                 </label>

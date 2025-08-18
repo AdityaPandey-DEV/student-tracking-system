@@ -117,7 +117,7 @@
                         <div class="mb-3">
                             <div class="form-floating">
                                 <input type="text" class="form-control text-uppercase" id="roll_number" name="roll_number" 
-                                       placeholder="Roll Number" required pattern="[A-Z0-9]+">
+                                       placeholder="Roll Number" required pattern="[A-Z0-9]+" oninput="this.value = this.value.toUpperCase()">
                                 <label for="roll_number">
                                     <i class="fas fa-id-card me-2"></i>Roll Number
                                 </label>
