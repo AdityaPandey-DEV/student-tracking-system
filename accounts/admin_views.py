@@ -508,7 +508,7 @@ def ai_analytics(request):
         return redirect('accounts:ai_analytics')
     
     # Get existing insights
-    insights = PerformanceInsight.objects.all().order_by('-created_at')[:10]
+    insights = PerformanceInsight.objects.filter(is_viewed=False).order_by('-created_at')[:10]
     
     # Get analytics reports
     reports = AIAnalyticsReport.objects.filter(

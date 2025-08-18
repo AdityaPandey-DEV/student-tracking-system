@@ -473,11 +473,22 @@ function implementInsight(insightId) {
 }
 
 function dismissInsight(insightId) {
-    if (confirm('Are you sure you want to dismiss this insight?')) {
-        const row = document.querySelector(`[onclick="viewInsightDetails('${insightId}')"]`).closest('tr');
-        row.style.display = 'none';
-        alert('Insight dismissed');
-    }
+    if (!confirm('Are you sure you want to dismiss this insight?')) return;
+    fetch(`/api/admin/insights/${insightId}/dismiss/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const btn = document.querySelector(`button[onclick="dismissInsight('${insightId}')"]`);
+            const row = btn ? btn.closest('tr') : null;
+            if (row) row.remove();
+        } else {
+            alert('Failed to dismiss insight: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(err => { console.error(err); alert('Failed to dismiss insight'); });
 }
 
 function viewReport(reportId) {

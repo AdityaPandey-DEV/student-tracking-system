@@ -17,6 +17,7 @@ from timetable.models import (
     Course, Subject, Teacher, TeacherSubject, TimeSlot, Room,
     TimetableEntry, Enrollment, Attendance, Announcement
 )
+from ai_features.models import PerformanceInsight
 
 def admin_required_api(view_func):
     """Decorator to ensure user is an admin for API calls."""
@@ -513,3 +514,18 @@ def check_updates(request):
     
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+@admin_required_api
+@require_http_methods(["POST"])
+def dismiss_insight(request, insight_id):
+    """Persistently dismiss an AI PerformanceInsight so it doesn't reappear."""
+    try:
+        insight = get_object_or_404(PerformanceInsight, id=insight_id)
+        insight.is_viewed = True
+        insight.is_actionable = False
+        insight.save(update_fields=['is_viewed', 'is_actionable'])
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)

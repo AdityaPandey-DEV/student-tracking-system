@@ -45,6 +45,7 @@ urlpatterns = [
     path('admin/timetable/export/', admin_api_views.export_timetable, name='admin_export_timetable'),
     path('admin/timetable/entries/', admin_api_views.get_filtered_timetable_entries, name='admin_filtered_timetable_entries'),
     path('admin/ai-suggestions/<int:suggestion_id>/', admin_api_views.get_ai_suggestion, name='admin_ai_suggestion'),
+    path('admin/insights/<int:insight_id>/dismiss/', admin_api_views.dismiss_insight, name='admin_dismiss_insight'),
     path('admin/updates/', admin_api_views.check_updates, name='admin_check_updates'),
     
     # Teacher API endpoints
