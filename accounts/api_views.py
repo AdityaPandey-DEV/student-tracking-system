@@ -10,6 +10,8 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 import json
 from django.db.models import Q
+from django.utils import timezone
+from django.db import connection
 
 # Import models
 from timetable.models import Announcement, Subject, TimetableEntry, Teacher, Course
@@ -334,3 +336,21 @@ def get_student_context(request):
             'error': 'Failed to load student context',
             'message': str(e)
         }, status=400)
+
+
+@require_http_methods(["GET"])
+def db_health(request):
+    """Lightweight DB health endpoint to indicate if DB is ready."""
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+        return JsonResponse({
+            'ready': True,
+            'timestamp': timezone.now().isoformat()
+        })
+    except Exception as e:
+        return JsonResponse({
+            'ready': False,
+            'message': str(e)
+        }, status=503)

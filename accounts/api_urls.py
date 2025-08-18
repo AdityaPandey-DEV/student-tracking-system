@@ -8,6 +8,7 @@ from . import api_views
 from . import admin_api_views
 from . import teacher_api_views
 from . import student_api_views
+from . import api_views as core_api_views
 
 app_name = 'api'
 
@@ -65,4 +66,6 @@ urlpatterns = [
     path('student/announcements/', student_api_views.get_my_announcements, name='student_get_announcements'),
     path('student/dashboard/stats/', student_api_views.get_dashboard_stats, name='student_dashboard_stats'),
     path('student/updates/', student_api_views.check_student_updates, name='student_check_updates'),
+    # Health endpoint
+    path('health/db/', core_api_views.db_health, name='db_health'),
 ]

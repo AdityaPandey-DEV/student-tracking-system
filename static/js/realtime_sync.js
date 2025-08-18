@@ -285,7 +285,8 @@ class RealtimeSync {
             active: { color: '#28a745', text: '●', title: 'Real-time sync active' },
             paused: { color: '#ffc107', text: '⏸', title: 'Real-time sync paused' },
             error: { color: '#dc3545', text: '●', title: 'Sync error - retrying...' },
-            offline: { color: '#6c757d', text: '●', title: 'Offline - sync unavailable' }
+            offline: { color: '#6c757d', text: '●', title: 'Offline - sync unavailable' },
+            db_warming: { color: '#fd7e14', text: '●', title: 'Database warming up' }
         };
         
         const config = statusConfig[status] || statusConfig.offline;
@@ -383,6 +384,22 @@ class RealtimeSync {
     forceUpdate() {
         this.checkForUpdates();
     }
+
+    // DB health check to drive syncIndicator state for DB readiness
+    async checkDbHealth() {
+        try {
+            const res = await fetch('/api/health/db/', { headers: { 'X-CSRFToken': this.getCSRFToken() } });
+            if (!res.ok) throw new Error('DB not ready');
+            const data = await res.json();
+            if (data.ready) {
+                this.showSyncIndicator('active');
+                return true;
+            }
+        } catch (e) {
+            this.showSyncIndicator('db_warming');
+            return false;
+        }
+    }
 }
 
 // Initialize real-time sync when DOM is ready
@@ -395,6 +412,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize sync system
     window.realtimeSync = new RealtimeSync();
+    // Kick a DB health check immediately and every 15s until ready
+    (async function pollDb() {
+        const ok = await window.realtimeSync.checkDbHealth();
+        if (!ok) {
+            setTimeout(pollDb, 15000);
+        }
+    })();
     
     // Add keyboard shortcut for manual refresh (Ctrl+Shift+U)
     document.addEventListener('keydown', (e) => {
