@@ -4,6 +4,7 @@ Handles OpenAI API calls for chat, recommendations, and analytics.
 """
 
 from django.conf import settings
+import os
 import logging
 from typing import Dict, List
 import json
@@ -42,8 +43,27 @@ class AIService:
             self.offline_ai_available = False
             logger.warning(f"Offline AI not available: {e}")
         
-        # Try OpenAI first
+        # Try Groq first (free tier, OpenAI-compatible API)
+        groq_api_key = os.environ.get('GROQ_API_KEY') or getattr(settings, 'GROQ_API_KEY', None)
+        groq_base_url = os.environ.get('GROQ_BASE_URL', 'https://api.groq.com/openai/v1')
+        if OPENAI_AVAILABLE and groq_api_key:
+            try:
+                self.client = OpenAI(
+                    api_key=groq_api_key,
+                    base_url=groq_base_url,
+                    timeout=30.0,
+                    max_retries=2
+                )
+                self.mock_mode = False
+                self.ai_provider = 'groq'
+                logger.info("Groq (OpenAI-compatible) client initialized successfully")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Groq client: {str(e)}")
+                self.client = None
+
+        # Try OpenAI (paid) if Groq not configured
         if (OPENAI_AVAILABLE and 
+            not self.client and
             hasattr(settings, 'OPENAI_API_KEY') and 
             settings.OPENAI_API_KEY and 
             settings.OPENAI_API_KEY != '' and
@@ -97,7 +117,9 @@ class AIService:
     def chat_with_ai(self, message: str, context: Dict = None) -> str:
         """Chat with AI for student queries."""
         try:
-            if self.ai_provider == 'openai' and not self.mock_mode:
+            if self.ai_provider == 'groq' and not self.mock_mode:
+                return self._chat_with_groq(message, context)
+            elif self.ai_provider == 'openai' and not self.mock_mode:
                 return self._chat_with_openai(message, context)
             elif self.ai_provider == 'huggingface' and not self.mock_mode:
                 return self._chat_with_huggingface(message, context)
@@ -381,6 +403,26 @@ class AIService:
             temperature=0.7
         )
         
+        return response.choices[0].message.content.strip()
+
+    def _chat_with_groq(self, message: str, context: Dict = None) -> str:
+        """Chat using Groq API (OpenAI-compatible client)."""
+        system_prompt = self._build_system_prompt(context)
+        # Allow overriding the model via env/settings
+        model = (
+            os.environ.get('GROQ_MODEL') or
+            getattr(settings, 'GROQ_MODEL', None) or
+            'llama-3.1-8b-instant'
+        )
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": message}
+            ],
+            max_tokens=500,
+            temperature=0.7
+        )
         return response.choices[0].message.content.strip()
     
     def _chat_with_huggingface(self, message: str, context: Dict = None) -> str:

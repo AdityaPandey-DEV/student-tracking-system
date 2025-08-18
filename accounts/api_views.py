@@ -16,6 +16,7 @@ from django.db import connection
 # Import models
 from timetable.models import Announcement, Subject, TimetableEntry, Teacher, Course
 from ai_features.models import StudyRecommendation, SmartNotification
+from utils.ai_service import ai_service
 from .models import StudentProfile, User
 
 
@@ -271,28 +272,12 @@ def ai_chat_response(request):
                 'error': 'No message provided'
             }, status=400)
         
-        # Mock AI response - replace with actual AI service
-        ai_responses = [
-            "I understand you're asking about study materials. Let me help you with that.",
-            "Based on your course, I recommend focusing on the fundamental concepts first.",
-            "Would you like me to create a study schedule for your upcoming exams?",
-            "That's a great question! Let me break it down for you step by step.",
-            "I can help you with that topic. Here's what you need to know..."
-        ]
-        
-        # Simple mock response based on message content
-        response = "I understand your question. "
-        if 'study' in message.lower():
-            response += "Here are some study recommendations for you."
-        elif 'schedule' in message.lower():
-            response += "I can help you plan your study schedule."
-        elif 'exam' in message.lower():
-            response += "Let me give you some exam preparation tips."
-        else:
-            response += "How else can I assist you with your academic needs?"
-        
-        # Here you would integrate with actual AI service
-        # ai_response = ai_service.get_response(message, user_context=request.user.studentprofile)
+        # Build lightweight context
+        context = {
+            'student_name': request.user.get_full_name(),
+            'current_courses': list(Subject.objects.filter(is_active=True).values_list('name', flat=True)[:5])
+        }
+        response = ai_service.chat_response(message, context)
         
         return JsonResponse({
             'response': response,
