@@ -220,7 +220,7 @@
                             </thead>
                             <tbody>
                                 {% for announcement in announcements %}
-                                    <tr class="announcement-row" data-urgent="{{ announcement.is_urgent|yesno:'true,false' }}" 
+                                    <tr class="announcement-row" data-announcement-id="{{ announcement.id }}" data-urgent="{{ announcement.is_urgent|yesno:'true,false' }}" 
                                         data-created="{{ announcement.created_at|date:'c' }}">
                                         <td class="text-center">
                                             {% if announcement.is_urgent %}
