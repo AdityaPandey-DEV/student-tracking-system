@@ -489,7 +489,9 @@ def get_ai_suggestion(request, suggestion_id):
             'status': suggestion.status,
             'is_applied': suggestion.status in ['approved', 'implemented'],
             'created_at': suggestion.created_at.isoformat(),
-            'analysis': 'AI-generated optimization suggestions for improved scheduling'
+            'analysis': 'AI-generated optimization suggestions for improved scheduling',
+            'grid': suggestion.suggestion_data.get('grid', {}),
+            'subjects': suggestion.suggestion_data.get('subjects', [])
         }
         
         return JsonResponse({'success': True, 'suggestion': suggestion_data})

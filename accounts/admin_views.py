@@ -269,6 +269,30 @@ def manage_timetable(request):
                         'conflicts_resolved': existing_entries
                     }
                 
+                # Build a simple suggested grid from DB subjects/time slots
+                subjects_for_class = Subject.objects.filter(
+                    is_active=True,
+                    course__name=course,
+                    year=year
+                ).order_by('code')
+                slots = TimeSlot.objects.filter(is_active=True).order_by('period_number')
+                days = [1, 2, 3, 4, 5]  # Mon-Fri
+                subject_list = list(subjects_for_class.values('id', 'code', 'name'))
+                grid = {}
+                if subject_list and slots:
+                    si = 0
+                    for day in days:
+                        day_rows = []
+                        for slot in slots:
+                            subj = subject_list[si % len(subject_list)]
+                            day_rows.append({
+                                'period_number': slot.period_number,
+                                'subject_code': subj['code'],
+                                'subject_name': subj['name']
+                            })
+                            si += 1
+                        grid[str(day)] = day_rows
+                
                 # Create timetable suggestion
                 TimetableSuggestion.objects.create(
                     generated_by=request.user,
@@ -279,7 +303,9 @@ def manage_timetable(request):
                     semester=1,
                     suggestion_data={
                         'optimization': optimization,
-                        'generated_at': timezone.now().isoformat()
+                        'generated_at': timezone.now().isoformat(),
+                        'grid': grid,
+                        'subjects': subject_list
                     },
                     optimization_score=optimization['optimization_score'],
                     status='generated'

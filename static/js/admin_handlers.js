@@ -828,32 +828,7 @@ class TimetableManagement {
                             </div>
                             
                             <h6><i class="fas fa-calendar-alt me-2"></i>Suggested Schedule</h6>
-                            <div class="table-responsive">
-                                <table class="table table-sm table-bordered">
-                                    <thead>
-                                        <tr>
-                                            <th>Day</th>
-                                            <th>Period 1</th>
-                                            <th>Period 2</th>
-                                            <th>Period 3</th>
-                                            <th>Period 4</th>
-                                            <th>Period 5</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(day => `
-                                            <tr>
-                                                <td><strong>${day}</strong></td>
-                                                <td class="text-center">Math</td>
-                                                <td class="text-center">Physics</td>
-                                                <td class="text-center">-</td>
-                                                <td class="text-center">Chemistry</td>
-                                                <td class="text-center">English</td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
+                            ${renderSuggestionGrid(suggestion.grid)}
                         </div>
                         <div class="card-footer">
                             ${!suggestion.is_applied ? `
@@ -1061,6 +1036,29 @@ function showToast(message, type = 'info') {
     toast.addEventListener('hidden.bs.toast', function() {
         toast.remove();
     });
+}
+
+// Render a DB-backed suggestion grid
+function renderSuggestionGrid(grid) {
+    if (!grid || Object.keys(grid).length === 0) {
+        return '<div class="alert alert-secondary">No suggested grid available.</div>';
+    }
+    const dayMap = { '1': 'Monday', '2': 'Tuesday', '3': 'Wednesday', '4': 'Thursday', '5': 'Friday' };
+    const periods = new Set();
+    Object.values(grid).forEach(rows => rows.forEach(r => periods.add(r.period_number)));
+    const sortedPeriods = Array.from(periods).sort((a,b)=>a-b);
+    let thead = '<thead><tr><th>Day</th>' + sortedPeriods.map(p=>`<th>Period ${p}</th>`).join('') + '</tr></thead>';
+    let tbody = '<tbody>' + Object.keys(grid).sort().map(day => {
+        const rowSlots = grid[day];
+        const rowMap = {};
+        rowSlots.forEach(s => { rowMap[s.period_number] = s; });
+        const cells = sortedPeriods.map(p => {
+            const s = rowMap[p];
+            return `<td class="text-center">${s ? `<strong>${s.subject_code}</strong><br><small>${s.subject_name}</small>` : '-'}</td>`;
+        }).join('');
+        return `<tr><td><strong>${dayMap[day] || day}</strong></td>${cells}</tr>`;
+    }).join('') + '</tbody>';
+    return `<div class="table-responsive"><table class="table table-sm table-bordered">${thead}${tbody}</table></div>`;
 }
 
 // Make functions globally available
