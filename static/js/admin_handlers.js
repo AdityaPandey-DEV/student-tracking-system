@@ -244,6 +244,38 @@ class TeacherManagement {
             });
         }
     }
+
+    // View teacher schedule (placeholder)
+    static viewTeacherSchedule(teacherId) {
+        const modalId = 'teacherScheduleModal';
+        let modalEl = document.getElementById(modalId);
+        if (!modalEl) {
+            modalEl = document.createElement('div');
+            modalEl.className = 'modal fade';
+            modalEl.id = modalId;
+            modalEl.innerHTML = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Teacher Schedule</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body" id="teacherScheduleContent">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            document.body.appendChild(modalEl);
+        }
+        const modal = new bootstrap.Modal(modalEl);
+        const content = document.getElementById('teacherScheduleContent');
+        content.innerHTML = `<div class="text-muted">Schedule view will be implemented. Teacher ID: ${teacherId}</div>`;
+        modal.show();
+    }
 }
 
 // Student Management Functions
@@ -653,6 +685,18 @@ class TimetableManagement {
             }
         });
     }
+
+    // Apply AI suggestion (placeholder)
+    static applySuggestion(suggestionId) {
+        if (!confirm('Apply this AI suggestion to the timetable?')) return;
+        // Placeholder success UI
+        showToast('AI suggestion applied (placeholder).', 'success');
+        const modalEl = document.getElementById('suggestionModal');
+        if (modalEl) {
+            const m = bootstrap.Modal.getInstance(modalEl);
+            m && m.hide();
+        }
+    }
     
     // Update timetable entry
     static updateEntry(entryId, formData) {
@@ -1023,6 +1067,7 @@ function showToast(message, type = 'info') {
 window.viewTeacherDetails = TeacherManagement.viewTeacherDetails;
 window.editTeacher = TeacherManagement.editTeacher;
 window.removeAssignment = TeacherManagement.removeAssignment;
+window.viewTeacherSchedule = TeacherManagement.viewTeacherSchedule;
 
 window.viewStudentDetails = StudentManagement.viewStudentDetails;
 window.editStudent = StudentManagement.editStudent;
@@ -1032,6 +1077,7 @@ window.exportStudents = StudentManagement.exportStudents;
 window.editEntry = TimetableManagement.editEntry;
 window.deleteEntry = TimetableManagement.deleteEntry;
 window.viewSuggestion = TimetableManagement.viewSuggestion;
+window.applySuggestion = TimetableManagement.applySuggestion;
 window.exportTimetable = TimetableManagement.exportTimetable;
 window.filterGrid = TimetableManagement.filterGrid;
 
