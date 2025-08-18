@@ -2,7 +2,7 @@
 Admin API views for real-time synchronization and AJAX functionality
 """
 
-from django.http import JsonResponse
+from django.http import JsonResponse, Http404
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404
@@ -486,13 +486,16 @@ def get_ai_suggestion(request, suggestion_id):
             'year': suggestion.year,
             'section': suggestion.section,
             'optimization_score': suggestion.optimization_score,
-            'is_applied': suggestion.is_applied,
+            'status': suggestion.status,
+            'is_applied': suggestion.status in ['approved', 'implemented'],
             'created_at': suggestion.created_at.isoformat(),
             'analysis': 'AI-generated optimization suggestions for improved scheduling'
         }
         
         return JsonResponse({'success': True, 'suggestion': suggestion_data})
     
+    except Http404:
+        return JsonResponse({'success': False, 'message': 'Suggestion not found'}, status=404)
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
