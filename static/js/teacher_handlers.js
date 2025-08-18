@@ -598,14 +598,18 @@ class TeacherSync {
     }
 }
 
-// Initialize real-time sync when page loads
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
+// Initialize real-time sync only on teacher pages
+(function initTeacherSyncIfTeacherPage() {
+    const isTeacherPage = window.location.pathname.includes('/teacher/');
+    if (!isTeacherPage) return;
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            TeacherSync.init();
+        });
+    } else {
         TeacherSync.init();
-    });
-} else {
-    TeacherSync.init();
-}
+    }
+})();
 
 // Make functions globally available
 window.markAttendance = AttendanceManagement.markAttendance;

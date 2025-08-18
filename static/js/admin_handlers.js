@@ -738,7 +738,10 @@ class TimetableManagement {
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) { throw new Error(`HTTP ${response.status}`); }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 const suggestion = data.suggestion;
@@ -813,7 +816,13 @@ class TimetableManagement {
                         </div>
                     </div>
                 `;
+            } else {
+                showToast('Error loading suggestion: ' + (data.message || 'Unknown error'), 'error');
             }
+        })
+        .catch(err => {
+            showToast('Error loading AI suggestion', 'error');
+            console.error(err);
         });
     }
     

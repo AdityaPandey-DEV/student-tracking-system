@@ -114,7 +114,8 @@ class RealtimeSync {
         if (!this.currentUser || this.currentUser === 'student') return;
         
         try {
-            const response = await fetch('/api/admin/updates/', {
+            const endpoint = this.currentUser === 'teacher' ? '/api/teacher/updates/' : '/api/admin/updates/';
+            const response = await fetch(endpoint, {
                 method: 'GET',
                 headers: {
                     'X-CSRFToken': this.getCSRFToken(),
