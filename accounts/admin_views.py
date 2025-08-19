@@ -219,20 +219,70 @@ def manage_timetable(request):
         
         if action == 'add_entry':
             try:
+                # Parse and validate inputs
+                subject_id = int(request.POST.get('subject_id'))
+                teacher_id = int(request.POST.get('teacher_id'))
+                course_name = request.POST.get('course')
+                year_val = int(request.POST.get('year'))
+                section_val = (request.POST.get('section') or '').upper()
+                day_of_week_val = int(request.POST.get('day_of_week'))
+                time_slot_id = int(request.POST.get('time_slot_id'))
+                room_id = int(request.POST.get('room_id'))
+                academic_year_val = request.POST.get('academic_year', '2023-24')
+                semester_val = int(request.POST.get('semester'))
+
+                # Optional: prevent assigning classes during a break slot
+                slot = get_object_or_404(TimeSlot, id=time_slot_id)
+                if getattr(slot, 'is_break', False):
+                    messages.error(request, 'Cannot create timetable entry in a break slot. Please select a teaching period.')
+                    return redirect('accounts:manage_timetable')
+
+                # Conflict checks within same academic year and semester
+                base_filters = {
+                    'day_of_week': day_of_week_val,
+                    'time_slot_id': time_slot_id,
+                    'academic_year': academic_year_val,
+                    'semester': semester_val,
+                    'is_active': True,
+                }
+
+                # Teacher conflict
+                if TimetableEntry.objects.filter(**base_filters, teacher_id=teacher_id).exists():
+                    messages.error(request, 'Conflict: The selected teacher is already assigned at this day and period.')
+                    return redirect('accounts:manage_timetable')
+
+                # Room conflict
+                if TimetableEntry.objects.filter(**base_filters, room_id=room_id).exists():
+                    messages.error(request, 'Conflict: The selected room is already occupied at this day and period.')
+                    return redirect('accounts:manage_timetable')
+
+                # Class (course/year/section) conflict
+                if TimetableEntry.objects.filter(
+                    **base_filters,
+                    course=course_name,
+                    year=year_val,
+                    section=section_val,
+                ).exists():
+                    messages.error(request, 'Conflict: This class already has a subject scheduled at this day and period.')
+                    return redirect('accounts:manage_timetable')
+
+                # Create entry
                 with transaction.atomic():
                     TimetableEntry.objects.create(
-                        subject_id=request.POST.get('subject_id'),
-                        teacher_id=request.POST.get('teacher_id'),
-                        course=request.POST.get('course'),
-                        year=int(request.POST.get('year')),
-                        section=request.POST.get('section').upper(),
-                        day_of_week=int(request.POST.get('day_of_week')),
-                        time_slot_id=request.POST.get('time_slot_id'),
-                        room_id=request.POST.get('room_id'),
-                        academic_year=request.POST.get('academic_year', '2023-24'),
-                        semester=int(request.POST.get('semester'))
+                        subject_id=subject_id,
+                        teacher_id=teacher_id,
+                        course=course_name,
+                        year=year_val,
+                        section=section_val,
+                        day_of_week=day_of_week_val,
+                        time_slot_id=time_slot_id,
+                        room_id=room_id,
+                        academic_year=academic_year_val,
+                        semester=semester_val,
                     )
                 messages.success(request, 'Timetable entry added successfully!')
+            except ValueError:
+                messages.error(request, 'Invalid input: please ensure all fields are correctly filled.')
             except Exception as e:
                 messages.error(request, f'Failed to add timetable entry: {str(e)}')
         
