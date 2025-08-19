@@ -1043,12 +1043,13 @@ function renderSuggestionGrid(grid) {
     if (!grid || Object.keys(grid).length === 0) {
         return '<div class="alert alert-secondary">No suggested grid available.</div>';
     }
-    const dayMap = { '1': 'Monday', '2': 'Tuesday', '3': 'Wednesday', '4': 'Thursday', '5': 'Friday' };
+    // Align with backend where days are 0..4 for Mon..Fri
+    const dayMap = { '0': 'Monday', '1': 'Tuesday', '2': 'Wednesday', '3': 'Thursday', '4': 'Friday', '5': 'Saturday' };
     const periods = new Set();
     Object.values(grid).forEach(rows => rows.forEach(r => periods.add(r.period_number)));
     const sortedPeriods = Array.from(periods).sort((a,b)=>a-b);
     let thead = '<thead><tr><th>Day</th>' + sortedPeriods.map(p=>`<th>Period ${p}</th>`).join('') + '</tr></thead>';
-    let tbody = '<tbody>' + Object.keys(grid).sort().map(day => {
+    let tbody = '<tbody>' + Object.keys(grid).sort((a,b)=>parseInt(a)-parseInt(b)).map(day => {
         const rowSlots = grid[day];
         const rowMap = {};
         rowSlots.forEach(s => { rowMap[s.period_number] = s; });
