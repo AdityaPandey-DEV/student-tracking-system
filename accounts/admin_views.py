@@ -516,10 +516,9 @@ def manage_timetable(request):
                         }
                 subject_list = list(subjects_unique.values())
                 
-                # Debug logging
+                # Debug logging (avoid referencing variables before assignment)
                 print(f"DEBUG: Grid keys: {list(grid.keys())}")
                 print(f"DEBUG: Subject list length: {len(subject_list)}")
-                print(f"DEBUG: Optimization score: {optimization_score}")
                 print(f"DEBUG: Course: {course}, Year: {year}, Section: {section}")
 
                 # Simple scoring based on utilization and unmet demand
@@ -543,6 +542,7 @@ def manage_timetable(request):
                 # Compute score
                 optimization_score = utilization * 0.7 + coverage_bonus * 0.2 + fairness_bonus * 0.1 - (unmet_demand * 1.5)
                 optimization_score = max(0.0, min(100.0, round(optimization_score, 1)))
+                print(f"DEBUG: Optimization score computed: {optimization_score}")
 
                 optimization = {
                     'method': 'greedy-constraints+segment-pass',
