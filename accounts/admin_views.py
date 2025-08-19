@@ -357,7 +357,7 @@ def manage_timetable(request):
                 busy = set((e.teacher_id, e.day_of_week, e.time_slot.period_number) for e in existing)
                 # Teacher constraints
                 max_consecutive = 2
-                max_daily_load = 5
+                max_daily_load = 6
                 teacher_last_period = {}   # (teacher_id, day) -> last period number
                 teacher_consec = {}        # (teacher_id, day) -> consecutive count
                 teacher_daily = {}         # (teacher_id, day) -> count
