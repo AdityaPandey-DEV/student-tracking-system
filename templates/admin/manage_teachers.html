@@ -216,11 +216,11 @@
                                         </td>
                                         <td>
                                             <button class="btn btn-sm btn-outline-info" 
-                                                    onclick="viewTeacherDetails('{{ teacher.pk|default:'' }}')">
+                                                    onclick="viewTeacherDetails('{{ teacher.pk}}')">
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-warning" 
-                                                    onclick="editTeacher('{{ teacher.pk|default:'' }}')">
+                                                    onclick="editTeacher('{{ teacher.pk}}')">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                         </td>
@@ -286,7 +286,7 @@
                                         </td>
                                         <td>
                                             <button class="btn btn-sm btn-outline-danger" 
-                                                    onclick="removeAssignment('{{ assignment.pk|default:'' }}')">
+                                                    onclick="removeAssignment('{{ assignment.pk}}')">
                                                 <i class="fas fa-unlink"></i>
                                             </button>
                                         </td>

@@ -493,7 +493,7 @@ def manage_timetable(request):
                 # Compute score
                 optimization_score = utilization * 0.7 + coverage_bonus * 0.2 + fairness_bonus * 0.1 - (unmet_demand * 1.5)
                 optimization_score = max(0.0, min(100.0, round(optimization_score, 1)))
-                
+
                 optimization = {
                     'method': 'greedy-constraints+segment-pass',
                     'utilization_percent': round(utilization, 1),
