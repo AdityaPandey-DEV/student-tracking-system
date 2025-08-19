@@ -465,6 +465,12 @@ def manage_timetable(request):
                             'teacher_name': s['teacher_name']
                         }
                 subject_list = list(subjects_unique.values())
+                
+                # Debug logging
+                print(f"DEBUG: Grid keys: {list(grid.keys())}")
+                print(f"DEBUG: Subject list length: {len(subject_list)}")
+                print(f"DEBUG: Optimization score: {optimization_score}")
+                print(f"DEBUG: Course: {course}, Year: {year}, Section: {section}")
 
                 # Simple scoring based on utilization and unmet demand
                 total_slots = len(days) * len(teaching_slots)
@@ -503,22 +509,28 @@ def manage_timetable(request):
                 }
                 
                 # Create timetable suggestion
-                TimetableSuggestion.objects.create(
-                    generated_by=request.user,
-                    course=course,
-                    year=year,
-                    section=section,
-                    academic_year='2023-24',
-                    semester=1,
-                    suggestion_data={
-                        'optimization': optimization,
-                        'generated_at': timezone.now().isoformat(),
-                        'grid': grid,
-                        'subjects': subject_list
-                    },
-                    optimization_score=optimization_score,
-                    status='generated'
-                )
+                try:
+                    suggestion = TimetableSuggestion.objects.create(
+                        generated_by=request.user,
+                        course=course,
+                        year=year,
+                        section=section,
+                        academic_year='2023-24',
+                        semester=1,
+                        suggestion_data={
+                            'optimization': optimization,
+                            'generated_at': timezone.now().isoformat(),
+                            'grid': grid,
+                            'subjects': subject_list
+                        },
+                        optimization_score=optimization_score,
+                        conflicts_resolved=existing_entries,
+                        status='generated'
+                    )
+                    print(f"DEBUG: Created suggestion with ID: {suggestion.id}")
+                except Exception as create_error:
+                    print(f"DEBUG: Error creating TimetableSuggestion: {create_error}")
+                    raise create_error
                 
                 messages.success(request, 'Timetable suggestion generated (algorithmic). Check the suggestions tab.')
             except Exception as e:
