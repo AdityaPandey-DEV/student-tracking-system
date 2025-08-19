@@ -408,7 +408,11 @@ def manage_timetable(request):
                                 key=lambda x: x['remaining'], reverse=True
                             )
                             placed = False
-                            last_subject_id = None if not day_cells else max((c['period_number'], c.get('subject_code')) for c in day_cells)[1]
+                            # Get the last subject from the current day to avoid immediate repeats
+                            last_subject_id = None
+                            for cell in day_cells:
+                                if cell['subject_code'] != '-' and cell['period_number'] < period_num:
+                                    last_subject_id = cell['subject_code']
                             for item in candidates:
                                 # Avoid immediate repeat if last filled in this segment/day is same subject
                                 if item['subject_code'] == last_subject_id:
@@ -463,7 +467,7 @@ def manage_timetable(request):
                 subject_list = list(subjects_unique.values())
 
                 # Simple scoring based on utilization and unmet demand
-                total_slots = len(days) * len(slots)
+                total_slots = len(days) * len(teaching_slots)
                 filled_slots = sum(1 for d in grid.values() for cell in d if cell['subject_code'] != '-')
                 unmet_demand = sum(max(0, v['remaining']) for v in subject_requirements.values())
                 utilization = (filled_slots / total_slots) * 100 if total_slots else 0
