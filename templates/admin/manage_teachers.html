@@ -208,7 +208,7 @@
                                         <td>
                                             {% with assigned_subjects=teacher_assignments|dictsort:"teacher_id" %}
                                                 {% for assignment in teacher_assignments %}
-                                                    {% if assignment.teacher.id == teacher.id %}
+                                                    {% if assignment.teacher.pk == teacher.pk %}
                                                         <span class="badge bg-primary me-1 mb-1">{{ assignment.subject.code }}</span>
                                                     {% endif %}
                                                 {% endfor %}
@@ -216,11 +216,11 @@
                                         </td>
                                         <td>
                                             <button class="btn btn-sm btn-outline-info" 
-                                                    onclick="viewTeacherDetails({{ teacher.id }})">
+                                                    onclick="viewTeacherDetails('{{ teacher.pk|default:'' }}')">
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-warning" 
-                                                    onclick="editTeacher({{ teacher.id }})">
+                                                    onclick="editTeacher('{{ teacher.pk|default:'' }}')">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                         </td>
@@ -285,8 +285,8 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                                    <button class="btn btn-sm btn-outline-danger" 
-                                                            onclick="removeAssignment({{ assignment.id }})">
+                                            <button class="btn btn-sm btn-outline-danger" 
+                                                    onclick="removeAssignment('{{ assignment.pk|default:'' }}')">
                                                 <i class="fas fa-unlink"></i>
                                             </button>
                                         </td>
