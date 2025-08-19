@@ -458,19 +458,8 @@ function populateGrid() {
     
     // This would populate the grid with actual timetable data
     // For now, showing placeholder
-    {% for entry in timetable_entries %}
-        const cell = document.getElementById('cell_{{ entry.day_of_week }}_{{ entry.time_slot.period_number }}');
-        if (cell) {
-            cell.innerHTML = `
-                <div class="timetable-entry">
-                    <strong>{{ entry.subject.code }}</strong><br>
-                    <small>{{ entry.course }} Y{{ entry.year }}{{ entry.section }}</small><br>
-                    <small>{{ entry.teacher.name }}</small><br>
-                    <small>{{ entry.room.room_number }}</small>
-                </div>
-            `;
-        }
-    {% endfor %}
+    // Note: Django template tags cannot be used directly in JavaScript
+    // This will be populated via AJAX or server-side rendering
 }
 
 function filterGrid() {
