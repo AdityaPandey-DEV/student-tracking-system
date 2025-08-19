@@ -480,6 +480,7 @@ def get_ai_suggestion(request, suggestion_id):
         
         suggestion = get_object_or_404(TimetableSuggestion, id=suggestion_id)
         
+        # Prefer algorithmic analysis text
         suggestion_data = {
             'id': suggestion.id,
             'course': suggestion.course,
@@ -489,7 +490,7 @@ def get_ai_suggestion(request, suggestion_id):
             'status': suggestion.status,
             'is_applied': suggestion.status in ['approved', 'implemented'],
             'created_at': suggestion.created_at.isoformat(),
-            'analysis': 'AI-generated optimization suggestions for improved scheduling',
+            'analysis': 'Algorithmic suggestion that balances subject load, avoids teacher double-booking, and limits long continuous stretches.',
             'grid': suggestion.suggestion_data.get('grid', {}),
             'subjects': suggestion.suggestion_data.get('subjects', [])
         }

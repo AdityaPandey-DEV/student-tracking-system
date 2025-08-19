@@ -281,8 +281,8 @@ def manage_timetable(request):
                         'remaining': max(1, int(periods_per_week)),
                     }
 
-                slots = list(TimeSlot.objects.filter(is_active=True).order_by('period_number'))
-                days = [1, 2, 3, 4, 5]  # Mon-Fri
+                slots = list(TimeSlot.objects.filter(is_active=True, is_break=False).order_by('period_number'))
+                days = [1, 2, 3, 4, 5]  # Mon-Fri (teaching days)
                 # Existing teacher commitments to avoid double-booking
                 existing = TimetableEntry.objects.filter(is_active=True).select_related('teacher', 'time_slot')
                 busy = set((e.teacher_id, e.day_of_week, e.time_slot.period_number) for e in existing)
@@ -294,20 +294,29 @@ def manage_timetable(request):
                 teacher_daily = {}         # (teacher_id, day) -> count
 
                 grid = {}
-                for day in days:
+                # Subject per-day caps to spread load across the week
+                num_days = len(days) if len(days) > 0 else 1
+                subject_day_cap = { sid: max(1, (info['remaining'] + num_days - 1) // num_days) for sid, info in subject_requirements.items() }
+                subject_daily_count = {}  # (subject_id, day) -> count
+                day_rotation = 0
+                for di, day in enumerate(days):
                     day_rows = []
                     # Track last subject placed to avoid immediate repeats per day
                     last_subject_id = None
                     for slot in slots:
-                        # Rank subjects by remaining (desc) to balance loads
-                        candidates = sorted(
-                            [s for s in subject_requirements.values() if s['remaining'] > 0],
-                            key=lambda x: x['remaining'], reverse=True
-                        )
+                        # Rank subjects by remaining (desc) to balance loads and rotate order per day
+                        base_candidates = [s for s in subject_requirements.values() if s['remaining'] > 0]
+                        candidates = sorted(base_candidates, key=lambda x: x['remaining'], reverse=True)
+                        if len(candidates) > 1 and day_rotation % len(candidates) != 0:
+                            rot = day_rotation % len(candidates)
+                            candidates = candidates[rot:] + candidates[:rot]
                         placed = False
                         for item in candidates:
                             # Avoid same subject immediately consecutively
                             if item['subject_id'] == last_subject_id:
+                                continue
+                            # Respect per-day cap for this subject
+                            if subject_daily_count.get((item['subject_id'], day), 0) >= subject_day_cap[item['subject_id']]:
                                 continue
                             t_id = item['teacher_id']
                             # Teacher availability
@@ -333,6 +342,7 @@ def manage_timetable(request):
                             item['remaining'] -= 1
                             last_subject_id = item['subject_id']
                             placed = True
+                            subject_daily_count[(item['subject_id'], day)] = subject_daily_count.get((item['subject_id'], day), 0) + 1
                             if t_id:
                                 key = (t_id, day)
                                 last = teacher_last_period.get(key)
@@ -352,6 +362,7 @@ def manage_timetable(request):
                             })
                             last_subject_id = None
                     grid[str(day)] = day_rows
+                    day_rotation += 1
 
                 # Build subjects list for UI
                 subjects_unique = {}
