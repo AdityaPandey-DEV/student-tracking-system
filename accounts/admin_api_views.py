@@ -537,6 +537,9 @@ def apply_ai_suggestion(request, suggestion_id):
         ).update(is_active=False)
 
         created = 0
+        skipped_no_teacher = 0
+        skipped_no_room = 0
+        skipped_break = 0
         with transaction.atomic():
             for day_str, rows in grid.items():
                 try:
@@ -560,10 +563,22 @@ def apply_ai_suggestion(request, suggestion_id):
                         teacher = ts_rel.teacher if ts_rel else None
                     period = cell.get('period_number')
                     slot = time_slots_by_period.get(period)
-                    if not slot or getattr(slot, 'is_break', False):
+                    if not slot:
+                        skipped_break += 1
+                        continue
+                    if getattr(slot, 'is_break', False):
+                        skipped_break += 1
                         continue
                     room = pick_room()
                     if not room:
+                        skipped_no_room += 1
+                        continue
+                    if not teacher:
+                        # Try to resolve via TeacherSubject mapping
+                        ts_rel = TeacherSubject.objects.filter(subject=subject, is_active=True).select_related('teacher').first()
+                        teacher = ts_rel.teacher if ts_rel else None
+                    if not teacher:
+                        skipped_no_teacher += 1
                         continue
                     TimetableEntry.objects.create(
                         subject=subject,
@@ -586,7 +601,16 @@ def apply_ai_suggestion(request, suggestion_id):
         # Broadcast update
         cache.set('timetable_applied', True, timeout=300)
 
-        return JsonResponse({'success': True, 'message': 'Suggestion applied successfully', 'created': created})
+        return JsonResponse({
+            'success': True,
+            'message': 'Suggestion applied successfully',
+            'created': created,
+            'skipped': {
+                'no_teacher': skipped_no_teacher,
+                'no_room': skipped_no_room,
+                'break_slots': skipped_break
+            }
+        })
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
 

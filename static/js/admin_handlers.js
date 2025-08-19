@@ -696,7 +696,9 @@ class TimetableManagement {
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                showToast(`Suggestion applied successfully (${data.created} entries)`, 'success');
+                const s = data.skipped || {};
+                const details = `Created: ${data.created}, Skipped (no teacher: ${s.no_teacher||0}, no room: ${s.no_room||0}, breaks: ${s.break_slots||0})`;
+                showToast(`Suggestion applied successfully. ${details}`, 'success');
                 const modalEl = document.getElementById('suggestionModal');
                 if (modalEl) {
                     const m = bootstrap.Modal.getInstance(modalEl);
