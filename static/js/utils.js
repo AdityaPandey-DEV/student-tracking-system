@@ -249,11 +249,16 @@ window.TimetableUtils = {
             });
         });
         
-        // Auto-hide alerts
+        // Auto-hide alerts (safe close to avoid remove() on null)
         setTimeout(() => {
-            document.querySelectorAll('.alert:not(.alert-permanent)').forEach(alert => {
-                const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
-                bsAlert.close();
+            document.querySelectorAll('.alert:not(.alert-permanent)').forEach((alertEl) => {
+                if (!alertEl || !document.body.contains(alertEl)) return;
+                try {
+                    const bsAlert = bootstrap.Alert.getInstance(alertEl) || new bootstrap.Alert(alertEl);
+                    bsAlert && bsAlert.close();
+                } catch (e) {
+                    try { alertEl.remove && alertEl.remove(); } catch (_) {}
+                }
             });
         }, 5000);
         

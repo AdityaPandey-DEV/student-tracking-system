@@ -747,8 +747,8 @@ class TimetableManagement {
                 if (data.success) {
                     // Remove row from table
                     const row = document.querySelector(`tr[data-entry-id="${entryId}"]`);
-                    if (row && row.remove) {
-                        row.remove();
+                    if (row && row.parentNode) {
+                        try { row.remove(); } catch (_) { row.parentNode.removeChild(row); }
                     }
                     showToast('Timetable entry deleted successfully', 'success');
                 } else {

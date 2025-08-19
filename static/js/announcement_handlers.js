@@ -81,8 +81,8 @@ function deleteAnnouncement(announcementId) {
             if (data.success) {
                 // Remove announcement from DOM
                 const row = document.querySelector(`tr[data-announcement-id="${announcementId}"]`);
-                if (row) {
-                    row.remove();
+                if (row && row.parentNode) {
+                    try { row.remove(); } catch (_) { row.parentNode.removeChild(row); }
                 }
                 // Show success message
                 showToast('Announcement deleted successfully', 'success');
