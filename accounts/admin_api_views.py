@@ -18,6 +18,7 @@ from timetable.models import (
     TimetableEntry, Enrollment, Attendance, Announcement
 )
 from ai_features.models import PerformanceInsight
+from ai_features.models import TimetableSuggestion
 
 def admin_required_api(view_func):
     """Decorator to ensure user is an admin for API calls."""
@@ -499,6 +500,93 @@ def get_ai_suggestion(request, suggestion_id):
     
     except Http404:
         return JsonResponse({'success': False, 'message': 'Suggestion not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+
+@login_required
+@admin_required_api
+@require_http_methods(["POST"])
+def apply_ai_suggestion(request, suggestion_id):
+    """Apply a generated timetable suggestion to actual TimetableEntry records."""
+    try:
+        suggestion = get_object_or_404(TimetableSuggestion, id=suggestion_id)
+        data = suggestion.suggestion_data or {}
+        grid = data.get('grid', {})
+        course = suggestion.course
+        year = suggestion.year
+        section = suggestion.section
+        academic_year = data.get('academic_year', '2023-24')
+        semester = data.get('semester', 1)
+
+        # Build subject and teacher lookup maps by code/name for quick resolution
+        subjects = {s.code: s for s in Subject.objects.filter(is_active=True, course__name=course, year=year)}
+        teachers_by_name = {t.name: t for t in Teacher.objects.filter(is_active=True)}
+        time_slots_by_period = {ts.period_number: ts for ts in TimeSlot.objects.filter(is_active=True)}
+        rooms = list(Room.objects.filter(is_active=True))
+
+        # Simple room picker fallback
+        def pick_room():
+            return rooms[0] if rooms else None
+
+        # Remove existing entries for target class to replace with suggestion
+        TimetableEntry.objects.filter(
+            course=course, year=year, section=section,
+            academic_year=academic_year, semester=semester,
+            is_active=True
+        ).update(is_active=False)
+
+        created = 0
+        with transaction.atomic():
+            for day_str, rows in grid.items():
+                try:
+                    day = int(day_str)
+                except ValueError:
+                    # Accept Monday..Friday strings as fallback
+                    day_names = {'Monday': 0, 'Tuesday': 1, 'Wednesday': 2, 'Thursday': 3, 'Friday': 4, 'Saturday': 5}
+                    day = day_names.get(day_str, 0)
+                for cell in rows:
+                    code = cell.get('subject_code')
+                    if not code or code == '-':
+                        continue
+                    subject = subjects.get(code)
+                    if not subject:
+                        continue
+                    teacher_name = cell.get('teacher_name') or ''
+                    teacher = teachers_by_name.get(teacher_name)
+                    # Use any teacher if not matched
+                    if not teacher:
+                        ts_rel = TeacherSubject.objects.filter(subject=subject, is_active=True).select_related('teacher').first()
+                        teacher = ts_rel.teacher if ts_rel else None
+                    period = cell.get('period_number')
+                    slot = time_slots_by_period.get(period)
+                    if not slot or getattr(slot, 'is_break', False):
+                        continue
+                    room = pick_room()
+                    if not room:
+                        continue
+                    TimetableEntry.objects.create(
+                        subject=subject,
+                        teacher=teacher,
+                        course=course,
+                        year=year,
+                        section=section,
+                        day_of_week=day,
+                        time_slot=slot,
+                        room=room,
+                        academic_year=academic_year,
+                        semester=semester,
+                        is_active=True
+                    )
+                    created += 1
+
+        suggestion.status = 'implemented'
+        suggestion.save(update_fields=['status'])
+
+        # Broadcast update
+        cache.set('timetable_applied', True, timeout=300)
+
+        return JsonResponse({'success': True, 'message': 'Suggestion applied successfully', 'created': created})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
 

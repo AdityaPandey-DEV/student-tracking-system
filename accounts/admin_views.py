@@ -334,7 +334,8 @@ def manage_timetable(request):
                 # Build slot segments based on break markers
                 all_slots = list(TimeSlot.objects.filter(is_active=True).order_by('period_number'))
                 teaching_slots = [s for s in all_slots if not s.is_break]
-                days = [1, 2, 3, 4, 5]  # Mon-Fri (teaching days)
+                # Use Monday (0) through Friday (4) to align with TimetableEntry.DAY_CHOICES
+                days = [0, 1, 2, 3, 4]
                 # Determine segments: contiguous teaching slots separated by breaks
                 segments = []  # list of lists of period_numbers
                 current_segment = []
@@ -487,7 +488,8 @@ def manage_timetable(request):
                                             'subject_name': item['subject_name'],
                                             'teacher_name': item['teacher_name']
                                         }
-                                        item['remaining'] -= 1
+                                        if item['remaining'] > 0:
+                                            item['remaining'] -= 1
                                         subject_daily_count[(item['subject_id'], day)] = subject_daily_count.get((item['subject_id'], day), 0) + 1
                                         if t_id:
                                             key = (t_id, day)
@@ -500,6 +502,65 @@ def manage_timetable(request):
                                             teacher_daily[key] = teacher_daily.get(key, 0) + 1
                                         placed = True
                                         used_periods.add(period_num)
+                                        break
+                                if placed:
+                                    break
+
+                # Third pass: aggressively fill any remaining Free Periods even if credits are exhausted
+                # Still honor teacher double-booking, daily load, and max consecutive constraints
+                for di, day in enumerate(days):
+                    day_cells = grid[str(day)]
+                    for seg_idx, seg_periods in enumerate(segments):
+                        for period_num in seg_periods:
+                            # Skip already filled
+                            if any(c['period_number'] == period_num and c['subject_code'] != '-' for c in day_cells):
+                                continue
+                            # Build fallback candidates from all subjects (ignore remaining)
+                            fallback_candidates = list(subject_requirements.values())
+                            # Rotate for fairness
+                            if len(fallback_candidates) > 1:
+                                rot = (di + seg_idx) % len(fallback_candidates)
+                                fallback_candidates = fallback_candidates[rot:] + fallback_candidates[:rot]
+                            # Determine last subject placed before this period to avoid immediate repeat
+                            last_subject_id = None
+                            for cell in day_cells:
+                                if cell['subject_code'] != '-' and cell['period_number'] < period_num:
+                                    last_subject_id = cell['subject_code']
+                            placed = False
+                            for item in fallback_candidates:
+                                if item['subject_code'] == last_subject_id:
+                                    continue
+                                t_id = item['teacher_id']
+                                if t_id and (t_id, day, period_num) in busy:
+                                    continue
+                                if t_id and teacher_daily.get((t_id, day), 0) >= max_daily_load:
+                                    continue
+                                if t_id:
+                                    key = (t_id, day)
+                                    last = teacher_last_period.get(key)
+                                    consec = teacher_consec.get(key, 0)
+                                    if last is not None and period_num == last + 1 and consec >= max_consecutive:
+                                        continue
+                                # Replace the free cell
+                                for idx, cell in enumerate(day_cells):
+                                    if cell['period_number'] == period_num and cell['subject_code'] == '-':
+                                        day_cells[idx] = {
+                                            'period_number': period_num,
+                                            'subject_code': item['subject_code'],
+                                            'subject_name': item['subject_name'],
+                                            'teacher_name': item['teacher_name']
+                                        }
+                                        # Do not decrement remaining; this is beyond credits
+                                        if t_id:
+                                            key = (t_id, day)
+                                            last = teacher_last_period.get(key)
+                                            if last is not None and period_num == last + 1:
+                                                teacher_consec[key] = teacher_consec.get(key, 0) + 1
+                                            else:
+                                                teacher_consec[key] = 1
+                                            teacher_last_period[key] = period_num
+                                            teacher_daily[key] = teacher_daily.get(key, 0) + 1
+                                        placed = True
                                         break
                                 if placed:
                                     break

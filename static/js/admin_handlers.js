@@ -688,14 +688,27 @@ class TimetableManagement {
 
     // Apply AI suggestion (placeholder)
     static applySuggestion(suggestionId) {
-        if (!confirm('Apply this AI suggestion to the timetable?')) return;
-        // Placeholder success UI
-        showToast('AI suggestion applied (placeholder).', 'success');
-        const modalEl = document.getElementById('suggestionModal');
-        if (modalEl) {
-            const m = bootstrap.Modal.getInstance(modalEl);
-            m && m.hide();
-        }
+        if (!confirm('Apply this optimized suggestion to the timetable? This will replace existing entries for the selected class.')) return;
+        fetch(`/api/admin/ai-suggestions/${suggestionId}/apply/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast(`Suggestion applied successfully (${data.created} entries)`, 'success');
+                const modalEl = document.getElementById('suggestionModal');
+                if (modalEl) {
+                    const m = bootstrap.Modal.getInstance(modalEl);
+                    m && m.hide();
+                }
+                // Reload to reflect changes
+                setTimeout(()=>location.reload(), 500);
+            } else {
+                showToast('Failed to apply suggestion: ' + (data.message || 'Unknown error'), 'error');
+            }
+        })
+        .catch(err => { showToast('Failed to apply suggestion', 'error'); console.error(err); });
     }
     
     // Update timetable entry
