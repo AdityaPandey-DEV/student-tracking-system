@@ -250,119 +250,138 @@ def manage_timetable(request):
                     is_active=True
                 ).count()
                 
-                timetable_data = {
-                    'course': course,
-                    'year': year,
-                    'section': section,
-                    'conflicts': existing_entries,
-                    'available_slots': list(range(1, 9))
-                }
-                
-                # Generate AI optimization
-                if ai_service:
-                    optimization = ai_service.optimize_timetable(timetable_data)
-                else:
-                    # Fallback optimization data
-                    optimization = {
-                        'optimization_score': 75,
-                        'suggestions': ['Move difficult subjects to morning hours', 'Balance theory and practical classes'],
-                        'conflicts_resolved': existing_entries
-                    }
-                
-                # Build a suggested grid from DB subjects/time slots with teacher constraints
+                # Build a suggested grid using a greedy algorithm with constraints (no AI)
                 subjects_for_class = Subject.objects.filter(
                     is_active=True,
                     course__name=course,
                     year=year
                 ).order_by('code')
-                # Map subject -> teacher via TeacherSubject
+                # Map subject -> preferred teacher via TeacherSubject (choose first active)
                 teacher_subjects = TeacherSubject.objects.filter(
                     is_active=True,
                     subject__in=subjects_for_class
                 ).select_related('subject', 'teacher')
-                subject_items = []
-                seen_subject_ids = set()
+                # Choose one teacher per subject (first assignment)
+                subject_teacher = {}
                 for ts in teacher_subjects:
-                    subject_items.append({
-                        'subject_id': ts.subject.id,
-                        'subject_code': ts.subject.code,
-                        'subject_name': ts.subject.name,
-                        'teacher_id': ts.teacher.id,
-                        'teacher_name': ts.teacher.name,
-                    })
-                    seen_subject_ids.add(ts.subject.id)
-                # Subjects without explicit teacher mapping (fallback)
+                    if ts.subject.id not in subject_teacher:
+                        subject_teacher[ts.subject.id] = (ts.teacher.id, ts.teacher.name)
+
+                # Determine weekly requirement per subject (approximate using credits; default 3)
+                subject_requirements = {}
                 for subj in subjects_for_class:
-                    if subj.id not in seen_subject_ids:
-                        subject_items.append({
-                            'subject_id': subj.id,
-                            'subject_code': subj.code,
-                            'subject_name': subj.name,
-                            'teacher_id': None,
-                            'teacher_name': ''
-                        })
+                    periods_per_week = subj.credits if hasattr(subj, 'credits') and subj.credits else 3
+                    t_id, t_name = subject_teacher.get(subj.id, (None, ''))
+                    subject_requirements[subj.id] = {
+                        'subject_id': subj.id,
+                        'subject_code': subj.code,
+                        'subject_name': subj.name,
+                        'teacher_id': t_id,
+                        'teacher_name': t_name,
+                        'remaining': max(1, int(periods_per_week)),
+                    }
+
                 slots = list(TimeSlot.objects.filter(is_active=True).order_by('period_number'))
                 days = [1, 2, 3, 4, 5]  # Mon-Fri
                 # Existing teacher commitments to avoid double-booking
                 existing = TimetableEntry.objects.filter(is_active=True).select_related('teacher', 'time_slot')
-                busy = set()
-                for e in existing:
-                    busy.add((e.teacher_id, e.day_of_week, e.time_slot.period_number))
-                # Limit consecutive periods for a teacher
+                busy = set((e.teacher_id, e.day_of_week, e.time_slot.period_number) for e in existing)
+                # Teacher constraints
                 max_consecutive = 2
-                teacher_last_period = {}  # (teacher_id, day) -> last period number
-                teacher_consec = {}       # (teacher_id, day) -> consecutive count
+                max_daily_load = 5
+                teacher_last_period = {}   # (teacher_id, day) -> last period number
+                teacher_consec = {}        # (teacher_id, day) -> consecutive count
+                teacher_daily = {}         # (teacher_id, day) -> count
+
                 grid = {}
-                if subject_items and slots:
-                    si = 0
-                    for day in days:
-                        day_rows = []
-                        for slot in slots:
-                            placed = False
-                            attempts = 0
-                            # Try up to len(subject_items) to find a feasible subject
-                            while attempts < len(subject_items) and not placed:
-                                item = subject_items[si % len(subject_items)]
-                                si += 1
-                                attempts += 1
-                                t_id = item['teacher_id']
-                                # Check teacher availability (if known)
-                                if t_id and (t_id, day, slot.period_number) in busy:
+                for day in days:
+                    day_rows = []
+                    # Track last subject placed to avoid immediate repeats per day
+                    last_subject_id = None
+                    for slot in slots:
+                        # Rank subjects by remaining (desc) to balance loads
+                        candidates = sorted(
+                            [s for s in subject_requirements.values() if s['remaining'] > 0],
+                            key=lambda x: x['remaining'], reverse=True
+                        )
+                        placed = False
+                        for item in candidates:
+                            # Avoid same subject immediately consecutively
+                            if item['subject_id'] == last_subject_id:
+                                continue
+                            t_id = item['teacher_id']
+                            # Teacher availability
+                            if t_id and (t_id, day, slot.period_number) in busy:
+                                continue
+                            # Teacher daily load limit
+                            if t_id and teacher_daily.get((t_id, day), 0) >= max_daily_load:
+                                continue
+                            # Consecutive constraint
+                            if t_id:
+                                key = (t_id, day)
+                                last = teacher_last_period.get(key)
+                                consec = teacher_consec.get(key, 0)
+                                if last is not None and slot.period_number == last + 1 and consec >= max_consecutive:
                                     continue
-                                # Check consecutive limit
-                                if t_id:
-                                    key = (t_id, day)
-                                    last = teacher_last_period.get(key)
-                                    consec = teacher_consec.get(key, 0)
-                                    if last is not None and slot.period_number == last + 1 and consec >= max_consecutive:
-                                        # Would exceed limit
-                                        continue
-                                # Place subject
-                                day_rows.append({
-                                    'period_number': slot.period_number,
-                                    'subject_code': item['subject_code'],
-                                    'subject_name': item['subject_name'],
-                                    'teacher_name': item['teacher_name']
-                                })
-                                placed = True
-                                # Update teacher state
-                                if t_id:
-                                    key = (t_id, day)
-                                    last = teacher_last_period.get(key)
-                                    if last is not None and slot.period_number == last + 1:
-                                        teacher_consec[key] = teacher_consec.get(key, 0) + 1
-                                    else:
-                                        teacher_consec[key] = 1
-                                    teacher_last_period[key] = slot.period_number
-                            if not placed:
-                                # Leave free if no feasible assignment
-                                day_rows.append({
-                                    'period_number': slot.period_number,
-                                    'subject_code': '-',
-                                    'subject_name': 'Free Period',
-                                    'teacher_name': ''
-                                })
-                        grid[str(day)] = day_rows
+                            # Place
+                            day_rows.append({
+                                'period_number': slot.period_number,
+                                'subject_code': item['subject_code'],
+                                'subject_name': item['subject_name'],
+                                'teacher_name': item['teacher_name']
+                            })
+                            item['remaining'] -= 1
+                            last_subject_id = item['subject_id']
+                            placed = True
+                            if t_id:
+                                key = (t_id, day)
+                                last = teacher_last_period.get(key)
+                                if last is not None and slot.period_number == last + 1:
+                                    teacher_consec[key] = teacher_consec.get(key, 0) + 1
+                                else:
+                                    teacher_consec[key] = 1
+                                teacher_last_period[key] = slot.period_number
+                                teacher_daily[key] = teacher_daily.get(key, 0) + 1
+                            break
+                        if not placed:
+                            day_rows.append({
+                                'period_number': slot.period_number,
+                                'subject_code': '-',
+                                'subject_name': 'Free Period',
+                                'teacher_name': ''
+                            })
+                            last_subject_id = None
+                    grid[str(day)] = day_rows
+
+                # Build subjects list for UI
+                subjects_unique = {}
+                for s in subject_requirements.values():
+                    key = s['subject_code']
+                    if key not in subjects_unique:
+                        subjects_unique[key] = {
+                            'code': s['subject_code'],
+                            'name': s['subject_name'],
+                            'teacher_name': s['teacher_name']
+                        }
+                subject_list = list(subjects_unique.values())
+
+                # Simple scoring based on utilization and unmet demand
+                total_slots = len(days) * len(slots)
+                filled_slots = sum(1 for d in grid.values() for cell in d if cell['subject_code'] != '-')
+                unmet_demand = sum(max(0, v['remaining']) for v in subject_requirements.values())
+                utilization = (filled_slots / total_slots) * 100 if total_slots else 0
+                optimization = {
+                    'method': 'greedy-constraints',
+                    'utilization_percent': round(utilization, 1),
+                    'conflicts_resolved': existing_entries,
+                    'unmet_subject_periods': int(unmet_demand),
+                    'suggestions': [
+                        'Avoids teacher double-booking automatically',
+                        'Limits long continuous stretches for teachers',
+                        'Balances subject periods across the week based on credits'
+                    ]
+                }
+                optimization_score = max(0.0, round(utilization - (unmet_demand * 2), 1))
                 
                 # Create timetable suggestion
                 TimetableSuggestion.objects.create(
@@ -378,13 +397,13 @@ def manage_timetable(request):
                         'grid': grid,
                         'subjects': subject_list
                     },
-                    optimization_score=optimization['optimization_score'],
+                    optimization_score=optimization_score,
                     status='generated'
                 )
                 
-                messages.success(request, 'AI timetable optimization generated! Check the suggestions tab.')
+                messages.success(request, 'Timetable suggestion generated (algorithmic). Check the suggestions tab.')
             except Exception as e:
-                messages.error(request, 'Failed to generate AI timetable.')
+                messages.error(request, 'Failed to generate timetable suggestion.')
         
         return redirect('accounts:manage_timetable')
     

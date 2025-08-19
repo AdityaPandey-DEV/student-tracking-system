@@ -797,7 +797,7 @@ class TimetableManagement {
                 modalContent.innerHTML = `
                     <div class="card">
                         <div class="card-header bg-info text-white">
-                            <h5 class="mb-0"><i class="fas fa-robot me-2"></i>AI Timetable Suggestion</h5>
+                            <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Timetable Suggestion (Algorithmic)</h5>
                         </div>
                         <div class="card-body">
                             <div class="row mb-3">
@@ -822,9 +822,9 @@ class TimetableManagement {
                                 </div>
                             </div>
                             
-                            <h6><i class="fas fa-lightbulb me-2"></i>AI Analysis</h6>
+                            <h6><i class="fas fa-lightbulb me-2"></i>Analysis</h6>
                             <div class="alert alert-info">
-                                ${suggestion.analysis || 'This AI suggestion optimizes class scheduling to minimize conflicts and maximize resource utilization.'}
+                                ${suggestion.analysis || 'This suggestion balances teacher load, avoids double-booking, and spreads subject periods across the week.'}
                             </div>
                             
                             <h6><i class="fas fa-calendar-alt me-2"></i>Suggested Schedule</h6>
