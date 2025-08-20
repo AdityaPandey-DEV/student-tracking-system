@@ -641,6 +641,17 @@ def manage_timetable(request):
                                     if placed:
                                         break
                     
+                    # Build subject list for the suggestion
+                    subject_list = []
+                    for subject_code, req in subject_requirements.items():
+                        subject_list.append({
+                            'code': subject_code,
+                            'name': req['subject_name'],
+                            'teacher_name': req['teacher_name'],
+                            'credits': req['credits'],
+                            'periods_per_week': req['periods_per_week']
+                        })
+                    
                     # Calculate optimization metrics
                     total_slots = len(teaching_period_numbers) * len(days)
                     filled_slots = sum(1 for day in days for cell in grid[str(day)] if cell['subject_code'] != '-')
