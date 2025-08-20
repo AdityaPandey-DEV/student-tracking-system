@@ -400,72 +400,86 @@ def manage_timetable(request):
                         day_rows = []
                         last_subject_id = None
                         
-                        for seg_idx, seg_periods in enumerate(segments):
-                            for period_num in seg_periods:
-                                if period_num not in teaching_period_numbers:
+                        # First, add all periods for this day (including breaks)
+                        for period_num in range(1, 11):  # Periods 1-10
+                            # Check if this period is a break
+                            is_break_period = period_num in break_periods
+                            
+                            if is_break_period:
+                                # Add break period
+                                day_rows.append({
+                                    'period_number': period_num,
+                                    'subject_code': '-',
+                                    'subject_name': 'Break',
+                                    'teacher_name': ''
+                                })
+                                continue
+                            
+                            # This is a teaching period, try to place a subject
+                            if period_num not in teaching_period_numbers:
+                                continue
+                            
+                            # Try to place subjects with remaining periods
+                            candidates = sorted(
+                                [s for s in subject_requirements.values() if s['remaining'] > 0],
+                                key=lambda x: x['remaining'], reverse=True
+                            )
+                            
+                            placed = False
+                            for item in candidates:
+                                # Avoid immediate repeat if last placed in this segment is same subject
+                                if item['subject_code'] == last_subject_id:
                                     continue
                                 
-                                # Try to place subjects with remaining periods
-                                candidates = sorted(
-                                    [s for s in subject_requirements.values() if s['remaining'] > 0],
-                                    key=lambda x: x['remaining'], reverse=True
-                                )
+                                # Check teacher availability
+                                t_id = item['teacher_id']
+                                if t_id and (t_id, day, period_num) in busy:
+                                    continue
                                 
-                                placed = False
-                                for item in candidates:
-                                    # Avoid immediate repeat if last placed in this segment is same subject
-                                    if item['subject_code'] == last_subject_id:
-                                        continue
-                                    
-                                    # Check teacher availability
-                                    t_id = item['teacher_id']
-                                    if t_id and (t_id, day, period_num) in busy:
-                                        continue
-                                    
-                                    # Check daily load limit
-                                    if t_id and teacher_daily.get((t_id, day), 0) >= max_daily_load:
-                                        continue
-                                    
-                                    # Consecutive constraint relative to adjacent period number
-                                    if t_id:
-                                        key = (t_id, day)
-                                        last = teacher_last_period.get(key)
-                                        consec = teacher_consec.get(key, 0)
-                                        if last is not None and period_num == last + 1 and consec >= max_consecutive:
-                                            continue
-                                    
-                                    # Place
-                                    day_rows.append({
-                                        'period_number': period_num,
-                                        'subject_code': item['subject_code'],
-                                        'subject_name': item['subject_name'],
-                                        'teacher_name': item['teacher_name']
-                                    })
-                                    item['remaining'] -= 1
-                                    last_subject_id = item['subject_code']
-                                    placed = True
-                                    subject_daily_count[(item['subject_id'], day)] = subject_daily_count.get((item['subject_id'], day), 0) + 1
-                                    
-                                    if t_id:
-                                        key = (t_id, day)
-                                        last = teacher_last_period.get(key)
-                                        if last is not None and period_num == last + 1:
-                                            teacher_consec[key] = teacher_consec.get(key, 0) + 1
-                                        else:
-                                            teacher_consec[key] = 1
-                                        teacher_last_period[key] = period_num
-                                        teacher_daily[key] = teacher_daily.get(key, 0) + 1
-                                    break
+                                # Check daily load limit
+                                if t_id and teacher_daily.get((t_id, day), 0) >= max_daily_load:
+                                    continue
                                 
-                                if not placed:
-                                    # Leave free if no feasible assignment
-                                    day_rows.append({
-                                        'period_number': period_num,
-                                        'subject_code': '-',
-                                        'subject_name': 'Free Period',
-                                        'teacher_name': ''
-                                    })
-                                    last_subject_id = None
+                                # Consecutive constraint relative to adjacent period number
+                                if t_id:
+                                    key = (t_id, day)
+                                    last = teacher_last_period.get(key)
+                                    consec = teacher_consec.get(key, 0)
+                                    if last is not None and period_num == last + 1 and consec >= max_consecutive:
+                                        continue
+                                
+                                # Place
+                                day_rows.append({
+                                    'period_number': period_num,
+                                    'subject_code': item['subject_code'],
+                                    'subject_name': item['subject_name'],
+                                    'teacher_name': item['teacher_name']
+                                })
+                                item['remaining'] -= 1
+                                last_subject_id = item['subject_code']
+                                placed = True
+                                subject_daily_count[(item['subject_id'], day)] = subject_daily_count.get((item['subject_id'], day), 0) + 1
+                                
+                                if t_id:
+                                    key = (t_id, day)
+                                    last = teacher_last_period.get(key)
+                                    if last is not None and period_num == last + 1:
+                                        teacher_consec[key] = teacher_consec.get(key, 0) + 1
+                                    else:
+                                        teacher_consec[key] = 1
+                                    teacher_last_period[key] = period_num
+                                    teacher_daily[key] = teacher_daily.get(key, 0) + 1
+                                break
+                            
+                            if not placed:
+                                # Leave free if no feasible assignment
+                                day_rows.append({
+                                    'period_number': period_num,
+                                    'subject_code': '-',
+                                    'subject_name': 'Free Period',
+                                    'teacher_name': ''
+                                })
+                                last_subject_id = None
                         
                         grid[str(day)] = day_rows
                         day_rotation += 1
@@ -476,10 +490,11 @@ def manage_timetable(request):
                         day_cells = grid[str(day)]
                         used_periods = set(cell['period_number'] for cell in day_cells if cell['subject_code'] != '-')
                         
-                        for seg_idx, seg_periods in enumerate(segments):
-                            for period_num in seg_periods:
-                                if period_num not in teaching_period_numbers:
-                                    continue
+                        # Iterate through all periods 1-10, but skip break periods
+                        for period_num in range(1, 11):
+                            # Skip break periods
+                            if period_num in break_periods:
+                                continue
                                 
                                 # If already filled, skip
                                 if period_num in used_periods:
@@ -556,10 +571,11 @@ def manage_timetable(request):
                         day_cells = grid[str(day)]
                         used_periods = set(cell['period_number'] for cell in day_cells if cell['subject_code'] != '-')
                         
-                        for seg_idx, seg_periods in enumerate(segments):
-                            for period_num in seg_periods:
-                                if period_num not in teaching_period_numbers:
-                                    continue
+                        # Iterate through all periods 1-10, but skip break periods
+                        for period_num in range(1, 11):
+                            # Skip break periods
+                            if period_num in break_periods:
+                                continue
                                 
                                 if period_num in used_periods:
                                     continue
