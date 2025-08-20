@@ -666,7 +666,7 @@ def manage_timetable(request):
                     coverage_bonus = avg_coverage * 10.0  # up to +10
                     
                     # Fairness (consecutive periods)
-                    unmet_demand = sum(max(0, req['periods_per_week'] - (req['periods_per_week'] - req['remaining'])) for req in subject_requirements.values())
+                    unmet_demand = sum(max(0, req['remaining']) for req in subject_requirements.values())
                     
                     if teacher_consec:
                         avg_consec = sum(teacher_consec.values()) / max(1, len(teacher_consec))
@@ -714,6 +714,7 @@ def manage_timetable(request):
                         generated_count += 1
                     except Exception as create_error:
                         print(f"DEBUG: Error creating TimetableSuggestion for {course} Year {year} Section {section}: {create_error}")
+                        print(f"DEBUG: Full error details: {type(create_error).__name__}: {str(create_error)}")
                         continue
                 
                 if generated_count > 0:
