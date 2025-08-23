@@ -280,21 +280,108 @@ def manage_timetable(request):
         
         if action == 'add_entry':
             try:
-                # Parse and validate inputs
-                subject_id = int(request.POST.get('subject_id'))
-                teacher_id = int(request.POST.get('teacher_id'))
-                course_name = request.POST.get('course')
-                year_val = int(request.POST.get('year'))
-                section_val = (request.POST.get('section') or '').upper()
-                day_of_week_val = int(request.POST.get('day_of_week'))
-                time_slot_id = int(request.POST.get('time_slot_id'))
-                room_id = int(request.POST.get('room_id'))
+                # Parse and validate inputs with comprehensive validation
+                subject_id = request.POST.get('subject_id')
+                teacher_id = request.POST.get('teacher_id')
+                course_name = request.POST.get('course', '').strip()
+                year_val = request.POST.get('year')
+                section_val = (request.POST.get('section') or '').strip().upper()
+                day_of_week_val = request.POST.get('day_of_week')
+                time_slot_id = request.POST.get('time_slot_id')
+                room_id = request.POST.get('room_id')
                 academic_year_val = request.POST.get('academic_year') or _get_current_academic_year()
-                semester_val = int(request.POST.get('semester'))
+                semester_val = request.POST.get('semester')
+                
+                # Comprehensive input validation
+                if not all([subject_id, teacher_id, course_name, year_val, day_of_week_val, time_slot_id, room_id, semester_val]):
+                    messages.error(request, 'All required fields must be filled.')
+                    return redirect('accounts:manage_timetable')
+                
+                # Validate numeric fields
+                numeric_fields = {
+                    'subject_id': subject_id,
+                    'teacher_id': teacher_id,
+                    'year': year_val,
+                    'day_of_week': day_of_week_val,
+                    'time_slot_id': time_slot_id,
+                    'room_id': room_id,
+                    'semester': semester_val
+                }
+                
+                for field_name, field_value in numeric_fields.items():
+                    if not field_value or not str(field_value).isdigit():
+                        messages.error(request, f'{field_name.replace("_", " ").title()} must be a valid number.')
+                        return redirect('accounts:manage_timetable')
+                
+                # Convert to integers after validation
+                subject_id = int(subject_id)
+                teacher_id = int(teacher_id)
+                year_val = int(year_val)
+                day_of_week_val = int(day_of_week_val)
+                time_slot_id = int(time_slot_id)
+                room_id = int(room_id)
+                semester_val = int(semester_val)
+                
+                # Validate ranges and logical constraints
+                if year_val <= 0 or year_val > 10:  # Reasonable year range
+                    messages.error(request, 'Year must be between 1 and 10.')
+                    return redirect('accounts:manage_timetable')
+                
+                if semester_val not in [1, 2]:
+                    messages.error(request, 'Semester must be 1 or 2.')
+                    return redirect('accounts:manage_timetable')
+                
+                if day_of_week_val < 0 or day_of_week_val > 6:  # 0=Monday, 6=Sunday
+                    messages.error(request, 'Day of week must be between 0 and 6.')
+                    return redirect('accounts:manage_timetable')
+                
+                if not course_name or len(course_name) > 50:  # Reasonable course name length
+                    messages.error(request, 'Course name is required and must be less than 50 characters.')
+                    return redirect('accounts:manage_timetable')
+                
+                if len(section_val) > 10:  # Reasonable section length
+                    messages.error(request, 'Section must be less than 10 characters.')
+                    return redirect('accounts:manage_timetable')
+                
+                # Validate academic year format (YYYY-YYYY)
+                if not isinstance(academic_year_val, str) or len(academic_year_val) != 7 or '-' not in academic_year_val:
+                    messages.error(request, 'Academic year must be in format YYYY-YYYY.')
+                    return redirect('accounts:manage_timetable')
+                
+                # Validate that referenced objects exist
+                try:
+                    subject = Subject.objects.get(id=subject_id, is_active=True)
+                except Subject.DoesNotExist:
+                    messages.error(request, 'Selected subject does not exist or is inactive.')
+                    return redirect('accounts:manage_timetable')
+                
+                try:
+                    teacher = Teacher.objects.get(id=teacher_id, is_active=True)
+                except Teacher.DoesNotExist:
+                    messages.error(request, 'Selected teacher does not exist or is inactive.')
+                    return redirect('accounts:manage_timetable')
+                
+                try:
+                    time_slot = TimeSlot.objects.get(id=time_slot_id, is_active=True)
+                except TimeSlot.DoesNotExist:
+                    messages.error(request, 'Selected time slot does not exist or is inactive.')
+                    return redirect('accounts:manage_timetable')
+                
+                try:
+                    room = Room.objects.get(id=room_id, is_active=True)
+                except Room.DoesNotExist:
+                    messages.error(request, 'Selected room does not exist or is inactive.')
+                    return redirect('accounts:manage_timetable')
+                
+                # Validate course exists
+                try:
+                    course = Course.objects.get(name=course_name, is_active=True)
+                except Course.DoesNotExist:
+                    messages.error(request, f'Course "{course_name}" does not exist or is inactive.')
+                    return redirect('accounts:manage_timetable')
 
                 # Optional: prevent assigning classes during a break slot
-                slot = get_object_or_404(TimeSlot, id=time_slot_id)
-                if getattr(slot, 'is_break', False):
+                if getattr(time_slot, 'is_break', False):
                     messages.error(request, 'Cannot create timetable entry in a break slot. Please select a teaching period.')
                     return redirect('accounts:manage_timetable')
 
@@ -327,7 +414,7 @@ def manage_timetable(request):
                     messages.error(request, 'Conflict: This class already has a subject scheduled at this day and period.')
                     return redirect('accounts:manage_timetable')
 
-                # Create entry
+                # Create entry with validated data
                 with transaction.atomic():
                     TimetableEntry.objects.create(
                         subject_id=subject_id,
@@ -342,8 +429,8 @@ def manage_timetable(request):
                         semester=semester_val,
                     )
                 messages.success(request, 'Timetable entry added successfully!')
-            except ValueError:
-                messages.error(request, 'Invalid input: please ensure all fields are correctly filled.')
+            except ValueError as e:
+                messages.error(request, f'Invalid input: {str(e)}. Please ensure all fields are correctly filled.')
             except Exception as e:
                 messages.error(request, f'Failed to add timetable entry: {str(e)}')
         
@@ -953,27 +1040,105 @@ def manage_timetable_configs(request):
         
         elif action == 'update_config':
             try:
-                config_id = int(request.POST.get('config_id'))
-                config = get_object_or_404(TimetableConfiguration, id=config_id)
+                config_id = request.POST.get('config_id')
+                if not config_id or not config_id.isdigit():
+                    messages.error(request, 'Invalid configuration ID.')
+                    return redirect('accounts:manage_timetable_configs')
                 
-                config.name = request.POST.get('name', config.name)
-                config.description = request.POST.get('description', config.description)
-                config.days_per_week = int(request.POST.get('days_per_week', config.days_per_week))
-                config.periods_per_day = int(request.POST.get('periods_per_day', config.periods_per_day))
-                config.period_duration = int(request.POST.get('period_duration', config.period_duration))
-                config.break_duration = int(request.POST.get('break_duration', config.break_duration))
-                config.max_teacher_periods_per_day = int(request.POST.get('max_teacher_periods_per_day', config.max_teacher_periods_per_day))
-                config.max_consecutive_periods = int(request.POST.get('max_consecutive_periods', config.max_consecutive_periods))
-                config.max_subject_periods_per_day = int(request.POST.get('max_subject_periods_per_day', config.max_subject_periods_per_day))
-                config.algorithm_type = request.POST.get('algorithm_type', config.algorithm_type)
-                config.max_iterations = int(request.POST.get('max_iterations', config.max_iterations))
-                config.timeout_seconds = int(request.POST.get('timeout_seconds', config.timeout_seconds))
+                config = get_object_or_404(TimetableConfiguration, id=int(config_id))
                 
-                # Handle break periods
+                # Get and validate input values
+                name = request.POST.get('name', '').strip()
+                description = request.POST.get('description', '').strip()
+                days_per_week = request.POST.get('days_per_week')
+                periods_per_day = request.POST.get('periods_per_day')
+                period_duration = request.POST.get('period_duration')
+                break_duration = request.POST.get('break_duration')
+                max_teacher_periods_per_day = request.POST.get('max_teacher_periods_per_day')
+                max_consecutive_periods = request.POST.get('max_consecutive_periods')
+                max_subject_periods_per_day = request.POST.get('max_subject_periods_per_day')
+                algorithm_type = request.POST.get('algorithm_type')
+                max_iterations = request.POST.get('max_iterations')
+                timeout_seconds = request.POST.get('timeout_seconds')
+                
+                # Input validation
+                if not name:
+                    messages.error(request, 'Configuration name is required.')
+                    return redirect('accounts:manage_timetable_configs')
+                
+                # Validate numeric fields
+                numeric_fields = {
+                    'days_per_week': days_per_week,
+                    'periods_per_day': periods_per_day,
+                    'period_duration': period_duration,
+                    'break_duration': break_duration,
+                    'max_teacher_periods_per_day': max_teacher_periods_per_day,
+                    'max_consecutive_periods': max_consecutive_periods,
+                    'max_subject_periods_per_day': max_subject_periods_per_day,
+                    'max_iterations': max_iterations,
+                    'timeout_seconds': timeout_seconds
+                }
+                
+                for field_name, field_value in numeric_fields.items():
+                    if field_value and (not field_value.isdigit() or int(field_value) <= 0):
+                        messages.error(request, f'{field_name.replace("_", " ").title()} must be a positive number.')
+                        return redirect('accounts:manage_timetable_configs')
+                
+                # Update fields with validation
+                if name:
+                    config.name = name
+                if description is not None:
+                    config.description = description
+                if days_per_week and days_per_week.isdigit():
+                    days_val = int(days_per_week)
+                    if days_val > 7:
+                        messages.error(request, 'Days per week cannot exceed 7.')
+                        return redirect('accounts:manage_timetable_configs')
+                    config.days_per_week = days_val
+                if periods_per_day and periods_per_day.isdigit():
+                    periods_val = int(periods_per_day)
+                    if periods_val > 12:
+                        messages.error(request, 'Periods per day cannot exceed 12.')
+                        return redirect('accounts:manage_timetable_configs')
+                    config.periods_per_day = periods_val
+                if period_duration and period_duration.isdigit():
+                    config.period_duration = int(period_duration)
+                if break_duration and break_duration.isdigit():
+                    config.break_duration = int(break_duration)
+                if max_teacher_periods_per_day and max_teacher_periods_per_day.isdigit():
+                    max_teacher_val = int(max_teacher_periods_per_day)
+                    if max_teacher_val > config.periods_per_day:
+                        messages.error(request, 'Max teacher periods per day cannot exceed total periods per day.')
+                        return redirect('accounts:manage_timetable_configs')
+                    config.max_teacher_periods_per_day = max_teacher_val
+                if max_consecutive_periods and max_consecutive_periods.isdigit():
+                    config.max_consecutive_periods = int(max_consecutive_periods)
+                if max_subject_periods_per_day and max_subject_periods_per_day.isdigit():
+                    config.max_subject_periods_per_day = int(max_subject_periods_per_day)
+                if algorithm_type:
+                    config.algorithm_type = algorithm_type
+                if max_iterations and max_iterations.isdigit():
+                    config.max_iterations = int(max_iterations)
+                if timeout_seconds and timeout_seconds.isdigit():
+                    config.timeout_seconds = int(timeout_seconds)
+                
+                # Handle break periods with validation
                 break_periods_str = request.POST.get('break_periods', '')
                 if break_periods_str:
-                    break_periods = [int(p.strip()) for p in break_periods_str.split(',') if p.strip().isdigit()]
-                    config.break_periods = break_periods
+                    break_periods_list = []
+                    for p in break_periods_str.split(','):
+                        p = p.strip()
+                        if p.isdigit():
+                            period_num = int(p)
+                            if 0 < period_num <= config.periods_per_day:
+                                break_periods_list.append(period_num)
+                            else:
+                                messages.error(request, f'Break period {period_num} is invalid. Must be between 1 and {config.periods_per_day}.')
+                                return redirect('accounts:manage_timetable_configs')
+                        else:
+                            messages.error(request, 'Break periods must be comma-separated numbers.')
+                            return redirect('accounts:manage_timetable_configs')
+                    config.break_periods = break_periods_list
                 
                 config.save()
                 messages.success(request, f'Configuration "{config.name}" updated successfully!')
