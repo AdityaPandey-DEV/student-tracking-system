@@ -384,8 +384,8 @@ def manage_timetable(request):
                     
                     if not result['success']:
                         print(f"DEBUG: Algorithm failed for {course} Year {year} Section {section}: {result['error']}")
-                                    continue
-                                
+                        continue
+                    
                     # Validate constraints
                     violations = validate_timetable_constraints(result['grid'], result['subjects'])
                     
