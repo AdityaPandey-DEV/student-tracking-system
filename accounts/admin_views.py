@@ -5,8 +5,8 @@ Admin dashboard and management views.
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q
-from django.db import transaction
+from django.db.models import Q, Count
+from django.db import transaction, models
 from django.utils import timezone
 from datetime import timedelta
 
@@ -26,6 +26,23 @@ try:
 except ImportError:
     ai_service = None
 
+def _get_current_academic_year():
+    """Get current academic year dynamically."""
+    current_year = timezone.now().year
+    current_month = timezone.now().month
+    # Academic year starts in June (month 6)
+    if current_month >= 6:
+        return f"{current_year}-{current_year + 1}"
+    else:
+        return f"{current_year-1}-{current_year}"
+
+def _get_current_semester():
+    """Get current semester dynamically."""
+    current_month = timezone.now().month
+    # Semester 1: June to December (months 6-12)
+    # Semester 2: January to May (months 1-5)
+    return 1 if current_month in [6, 7, 8, 9, 10, 11, 12] else 2
+
 def admin_required(view_func):
     """Decorator to ensure user is an admin."""
     def wrapper(request, *args, **kwargs):
@@ -43,13 +60,13 @@ def admin_dashboard(request):
     """Admin dashboard with analytics and overview."""
     admin = request.user.adminprofile
     
-    # Basic statistics
+    # Basic statistics with optimized queries
     total_students = StudentProfile.objects.count()
     total_teachers = Teacher.objects.filter(is_active=True).count()
     total_courses = Course.objects.filter(is_active=True).count()
     total_subjects = Subject.objects.filter(is_active=True).count()
     
-    # Recent registrations (last 7 days)
+    # Recent registrations (last 7 days) with optimized query
     week_ago = timezone.now() - timedelta(days=7)
     recent_students = StudentProfile.objects.filter(
         user__date_joined__gte=week_ago
@@ -58,39 +75,34 @@ def admin_dashboard(request):
     # Timetable statistics
     active_timetable_entries = TimetableEntry.objects.filter(is_active=True).count()
     
-    # Recent announcements
+    # Recent announcements with limit for performance
     recent_announcements = Announcement.objects.filter(
         is_active=True
-    ).order_by('-created_at')[:5]
+    ).select_related('posted_by').order_by('-created_at')[:5]
     
-    # Course-wise student distribution
-    # Since StudentProfile.course is a CharField, we need to group manually
-    
+    # Course-wise student distribution with optimized query
     course_distribution = []
-    for course in Course.objects.filter(is_active=True):
-        student_count = StudentProfile.objects.filter(
-            course=course.name,
-            user__is_active=True
-        ).count()
+    courses_with_counts = Course.objects.filter(is_active=True).annotate(
+        student_count=Count('studentprofile', filter=Q(studentprofile__user__is_active=True))
+    ).values('name', 'full_name', 'student_count').order_by('-student_count')
+    
+    for course_data in courses_with_counts:
         course_distribution.append({
-            'name': course.name,
-            'full_name': course.full_name,
-            'student_count': student_count
+            'name': course_data['name'],
+            'full_name': course_data['full_name'],
+            'student_count': course_data['student_count']
         })
     
-    # Sort by student count descending
-    course_distribution = sorted(course_distribution, key=lambda x: x['student_count'], reverse=True)
-    
-    # AI insights summary
+    # AI insights summary with limit for performance
     ai_insights = PerformanceInsight.objects.filter(
         is_actionable=True,
         is_viewed=False
-    ).order_by('-impact_score')[:3]
+    ).select_related('generated_by').order_by('-impact_score')[:3]
     
-    # Timetable optimization suggestions
+    # Timetable optimization suggestions with limit for performance
     optimization_suggestions = AlgorithmicTimetableSuggestion.objects.filter(
         status='generated'
-    ).order_by('-optimization_score')[:3]
+    ).select_related('generated_by').order_by('-optimization_score')[:3]
     
     context = {
         'admin': admin,
@@ -118,11 +130,24 @@ def manage_courses(request):
         
         if action == 'add_course':
             try:
+                name = request.POST.get('name', '').strip()
+                full_name = request.POST.get('full_name', '').strip()
+                duration_years = request.POST.get('duration_years', '4')
+                
+                # Input validation
+                if not name or not full_name:
+                    messages.error(request, 'Course name and full name are required.')
+                    return redirect('accounts:manage_courses')
+                
+                if not duration_years.isdigit() or int(duration_years) <= 0:
+                    messages.error(request, 'Duration must be a positive number.')
+                    return redirect('accounts:manage_courses')
+                
                 Course.objects.create(
-                    name=request.POST.get('name'),
-                    full_name=request.POST.get('full_name'),
-                    duration_years=int(request.POST.get('duration_years', 4)),
-                    description=request.POST.get('description', '')
+                    name=name,
+                    full_name=full_name,
+                    duration_years=int(duration_years),
+                    description=request.POST.get('description', '').strip()
                 )
                 messages.success(request, 'Course added successfully!')
             except Exception as e:
@@ -130,14 +155,34 @@ def manage_courses(request):
         
         elif action == 'add_subject':
             try:
+                code = request.POST.get('code', '').strip().upper()
+                name = request.POST.get('name', '').strip()
+                course_id = request.POST.get('course_id')
+                year = request.POST.get('year')
+                semester = request.POST.get('semester')
+                credits = request.POST.get('credits', '3')
+                
+                # Input validation
+                if not all([code, name, course_id, year, semester]):
+                    messages.error(request, 'All fields are required.')
+                    return redirect('accounts:manage_courses')
+                
+                if not year.isdigit() or not semester.isdigit() or not credits.isdigit():
+                    messages.error(request, 'Year, semester, and credits must be numbers.')
+                    return redirect('accounts:manage_courses')
+                
+                if int(year) <= 0 or int(semester) <= 0 or int(credits) <= 0:
+                    messages.error(request, 'Year, semester, and credits must be positive numbers.')
+                    return redirect('accounts:manage_courses')
+                
                 Subject.objects.create(
-                    code=request.POST.get('code').upper(),
-                    name=request.POST.get('name'),
-                    course_id=request.POST.get('course_id'),
-                    year=int(request.POST.get('year')),
-                    semester=int(request.POST.get('semester')),
-                    credits=int(request.POST.get('credits', 3)),
-                    description=request.POST.get('description', '')
+                    code=code,
+                    name=name,
+                    course_id=course_id,
+                    year=int(year),
+                    semester=int(semester),
+                    credits=int(credits),
+                    description=request.POST.get('description', '').strip()
                 )
                 messages.success(request, 'Subject added successfully!')
             except Exception as e:
@@ -165,14 +210,29 @@ def manage_teachers(request):
         
         if action == 'add_teacher':
             try:
+                employee_id = request.POST.get('employee_id', '').strip().upper()
+                name = request.POST.get('name', '').strip()
+                email = request.POST.get('email', '').strip()
+                phone_number = request.POST.get('phone_number', '').strip()
+                department = request.POST.get('department', '').strip()
+                
+                # Input validation
+                if not all([employee_id, name, email, department]):
+                    messages.error(request, 'Employee ID, name, email, and department are required.')
+                    return redirect('accounts:manage_teachers')
+                
+                if '@' not in email:
+                    messages.error(request, 'Please enter a valid email address.')
+                    return redirect('accounts:manage_teachers')
+                
                 Teacher.objects.create(
-                    employee_id=request.POST.get('employee_id').upper(),
-                    name=request.POST.get('name'),
-                    email=request.POST.get('email'),
-                    phone_number=request.POST.get('phone_number'),
-                    department=request.POST.get('department'),
-                    designation=request.POST.get('designation', ''),
-                    specialization=request.POST.get('specialization', '')
+                    employee_id=employee_id,
+                    name=name,
+                    email=email,
+                    phone_number=phone_number,
+                    department=department,
+                    designation=request.POST.get('designation', '').strip(),
+                    specialization=request.POST.get('specialization', '').strip()
                 )
                 messages.success(request, 'Teacher added successfully!')
             except Exception as e:
@@ -229,7 +289,7 @@ def manage_timetable(request):
                 day_of_week_val = int(request.POST.get('day_of_week'))
                 time_slot_id = int(request.POST.get('time_slot_id'))
                 room_id = int(request.POST.get('room_id'))
-                academic_year_val = request.POST.get('academic_year', '2023-24')
+                academic_year_val = request.POST.get('academic_year') or _get_current_academic_year()
                 semester_val = int(request.POST.get('semester'))
 
                 # Optional: prevent assigning classes during a break slot
@@ -395,15 +455,21 @@ def manage_timetable(request):
                     # Generate timetable using algorithm with timeout protection
                     result = None
                     try:
-                        import signal
+                        import threading
+                        import time
                         
-                        def timeout_handler(signum, frame):
-                            raise TimeoutError("Algorithm execution timed out")
+                        # Cross-platform timeout solution
+                        timeout_occurred = False
+                        
+                        def timeout_handler():
+                            nonlocal timeout_occurred
+                            timeout_occurred = True
                         
                         # Set timeout to 10 seconds to prevent memory issues
-                        signal.signal(signal.SIGALRM, timeout_handler)
-                        signal.alarm(10)
+                        timer = threading.Timer(10.0, timeout_handler)
+                        timer.start()
                         
+                        start_time = time.time()
                         result = generator.generate_timetable(
                             subjects=create_subject_requirements(subject_requirements),
                             days=config.days_per_week,
@@ -411,7 +477,12 @@ def manage_timetable(request):
                             break_periods=config.break_periods
                         )
                         
-                        signal.alarm(0)  # Cancel the alarm
+                        timer.cancel()  # Cancel the timer
+                        
+                        # Check if timeout occurred
+                        if timeout_occurred:
+                            raise TimeoutError("Algorithm execution timed out")
+                            
                     except TimeoutError:
                         print(f"DEBUG: Algorithm timed out for {course_name} Year {year} Section {section}, skipping...")
                         continue
@@ -430,10 +501,8 @@ def manage_timetable(request):
                     # Create algorithmic timetable suggestion
                     try:
                         # Get current academic year and semester dynamically
-                        current_year = timezone.now().year
-                        current_month = timezone.now().month
-                        academic_year = f"{current_year}-{current_year + 1}" if current_month >= 6 else f"{current_year-1}-{current_year}"
-                        semester = 1 if current_month in [6, 7, 8, 9, 10, 11, 12] else 2
+                        academic_year = _get_current_academic_year()
+                        semester = _get_current_semester()
                         
                         suggestion = AlgorithmicTimetableSuggestion.objects.create(
                             generated_by=request.user,
@@ -535,7 +604,7 @@ def manage_students(request):
                 Enrollment.objects.get_or_create(
                     student=student,
                     subject=subject,
-                    academic_year=request.POST.get('academic_year', '2023-24'),
+                    academic_year=request.POST.get('academic_year') or _get_current_academic_year(),
                     semester=int(request.POST.get('semester')),
                     defaults={'is_active': True}
                 )
@@ -623,14 +692,34 @@ def manage_announcements(request):
     
     if request.method == 'POST':
         try:
+            title = request.POST.get('title', '').strip()
+            content = request.POST.get('content', '').strip()
+            target_audience = request.POST.get('target_audience', 'all')
+            target_course = request.POST.get('target_course', '').strip()
+            target_year = request.POST.get('target_year')
+            target_section = request.POST.get('target_section', '').strip()
+            
+            # Input validation
+            if not title or not content:
+                messages.error(request, 'Title and content are required.')
+                return redirect('accounts:manage_announcements')
+            
+            if len(title) > 200:  # Assuming title field has max_length=200
+                messages.error(request, 'Title is too long. Maximum 200 characters allowed.')
+                return redirect('accounts:manage_announcements')
+            
+            if len(content) > 2000:  # Assuming content field has max_length=2000
+                messages.error(request, 'Content is too long. Maximum 2000 characters allowed.')
+                return redirect('accounts:manage_announcements')
+            
             Announcement.objects.create(
-                title=request.POST.get('title'),
-                content=request.POST.get('content'),
+                title=title,
+                content=content,
                 posted_by=request.user,
-                target_audience=request.POST.get('target_audience', 'all'),
-                target_course=request.POST.get('target_course', ''),
-                target_year=int(request.POST.get('target_year', 0)) if request.POST.get('target_year') else None,
-                target_section=request.POST.get('target_section', ''),
+                target_audience=target_audience,
+                target_course=target_course,
+                target_year=int(target_year) if target_year and target_year.isdigit() else None,
+                target_section=target_section,
                 is_urgent=bool(request.POST.get('is_urgent'))
             )
             messages.success(request, 'Announcement posted successfully!')
@@ -738,13 +827,22 @@ def ai_analytics(request):
     ).order_by('-created_at')[:5]
     
     # Basic statistics for dashboard
-    stats = {
-        'total_insights': PerformanceInsight.objects.count(),
-        'actionable_insights': PerformanceInsight.objects.filter(is_actionable=True).count(),
-        'avg_confidence': PerformanceInsight.objects.aggregate(
-            avg_confidence=models.Avg('confidence_score')
-        )['avg_confidence'] or 0
-    }
+    try:
+        stats = {
+            'total_insights': PerformanceInsight.objects.count(),
+            'actionable_insights': PerformanceInsight.objects.filter(is_actionable=True).count(),
+            'avg_confidence': PerformanceInsight.objects.aggregate(
+                avg_confidence=models.Avg('confidence_score')
+            )['avg_confidence'] or 0
+        }
+    except Exception as e:
+        # Fallback statistics if database query fails
+        stats = {
+            'total_insights': 0,
+            'actionable_insights': 0,
+            'avg_confidence': 0
+        }
+        print(f"Warning: Failed to get AI analytics stats: {e}")
     
     context = {
         'insights': insights,
@@ -764,37 +862,86 @@ def manage_timetable_configs(request):
         
         if action == 'create_config':
             try:
-                name = request.POST.get('name')
-                description = request.POST.get('description', '')
-                days_per_week = int(request.POST.get('days_per_week', 5))
-                periods_per_day = int(request.POST.get('periods_per_day', 8))
-                period_duration = int(request.POST.get('period_duration', 50))
-                break_periods = request.POST.get('break_periods', '').split(',') if request.POST.get('break_periods') else []
-                break_duration = int(request.POST.get('break_duration', 15))
-                max_teacher_periods_per_day = int(request.POST.get('max_teacher_periods_per_day', 5))
-                max_consecutive_periods = int(request.POST.get('max_consecutive_periods', 2))
-                max_subject_periods_per_day = int(request.POST.get('max_subject_periods_per_day', 3))
+                name = request.POST.get('name', '').strip()
+                description = request.POST.get('description', '').strip()
+                days_per_week = request.POST.get('days_per_week', '5')
+                periods_per_day = request.POST.get('periods_per_day', '8')
+                period_duration = request.POST.get('period_duration', '50')
+                break_periods = request.POST.get('break_periods', '')
+                break_duration = request.POST.get('break_duration', '15')
+                max_teacher_periods_per_day = request.POST.get('max_teacher_periods_per_day', '5')
+                max_consecutive_periods = request.POST.get('max_consecutive_periods', '2')
+                max_subject_periods_per_day = request.POST.get('max_subject_periods_per_day', '3')
                 algorithm_type = request.POST.get('algorithm_type', 'constraint_satisfaction')
-                max_iterations = int(request.POST.get('max_iterations', 1000))
-                timeout_seconds = int(request.POST.get('timeout_seconds', 30))
+                max_iterations = request.POST.get('max_iterations', '1000')
+                timeout_seconds = request.POST.get('timeout_seconds', '30')
+                
+                # Input validation
+                if not name:
+                    messages.error(request, 'Configuration name is required.')
+                    return redirect('accounts:manage_timetable_configs')
+                
+                # Validate numeric fields
+                numeric_fields = {
+                    'days_per_week': days_per_week,
+                    'periods_per_day': periods_per_day,
+                    'period_duration': period_duration,
+                    'break_duration': break_duration,
+                    'max_teacher_periods_per_day': max_teacher_periods_per_day,
+                    'max_consecutive_periods': max_consecutive_periods,
+                    'max_subject_periods_per_day': max_subject_periods_per_day,
+                    'max_iterations': max_iterations,
+                    'timeout_seconds': timeout_seconds
+                }
+                
+                for field_name, field_value in numeric_fields.items():
+                    if not field_value.isdigit() or int(field_value) <= 0:
+                        messages.error(request, f'{field_name.replace("_", " ").title()} must be a positive number.')
+                        return redirect('accounts:manage_timetable_configs')
+                
+                # Validate logical constraints
+                if int(days_per_week) > 7:
+                    messages.error(request, 'Days per week cannot exceed 7.')
+                    return redirect('accounts:manage_timetable_configs')
+                
+                if int(periods_per_day) > 12:
+                    messages.error(request, 'Periods per day cannot exceed 12.')
+                    return redirect('accounts:manage_timetable_configs')
+                
+                if int(max_teacher_periods_per_day) > int(periods_per_day):
+                    messages.error(request, 'Max teacher periods per day cannot exceed total periods per day.')
+                    return redirect('accounts:manage_timetable_configs')
                 
                 # Convert break periods to integers
-                break_periods = [int(p.strip()) for p in break_periods if p.strip().isdigit()]
+                break_periods_list = []
+                if break_periods:
+                    for p in break_periods.split(','):
+                        p = p.strip()
+                        if p.isdigit():
+                            period_num = int(p)
+                            if 0 < period_num <= int(periods_per_day):
+                                break_periods_list.append(period_num)
+                            else:
+                                messages.error(request, f'Break period {period_num} is invalid. Must be between 1 and {periods_per_day}.')
+                                return redirect('accounts:manage_timetable_configs')
+                        else:
+                            messages.error(request, 'Break periods must be comma-separated numbers.')
+                            return redirect('accounts:manage_timetable_configs')
                 
                 config = TimetableConfiguration.objects.create(
                     name=name,
                     description=description,
-                    days_per_week=days_per_week,
-                    periods_per_day=periods_per_day,
-                    period_duration=period_duration,
-                    break_periods=break_periods,
-                    break_duration=break_duration,
-                    max_teacher_periods_per_day=max_teacher_periods_per_day,
-                    max_consecutive_periods=max_consecutive_periods,
-                    max_subject_periods_per_day=max_subject_periods_per_day,
+                    days_per_week=int(days_per_week),
+                    periods_per_day=int(periods_per_day),
+                    period_duration=int(period_duration),
+                    break_periods=break_periods_list,
+                    break_duration=int(break_duration),
+                    max_teacher_periods_per_day=int(max_teacher_periods_per_day),
+                    max_consecutive_periods=int(max_consecutive_periods),
+                    max_subject_periods_per_day=int(max_subject_periods_per_day),
                     algorithm_type=algorithm_type,
-                    max_iterations=max_iterations,
-                    timeout_seconds=timeout_seconds,
+                    max_iterations=int(max_iterations),
+                    timeout_seconds=int(timeout_seconds),
                     created_by=request.user
                 )
                 
