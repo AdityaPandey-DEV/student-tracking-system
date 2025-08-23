@@ -326,34 +326,41 @@ def manage_timetable(request):
                 total_combinations = len(all_combinations)
                 
                 for combo in all_combinations:
-                    course = combo['course']
+                    course_name = combo['course']
                     year = combo['year']
                     section = combo['section']
                     
-                    print(f"DEBUG: Generating algorithmic timetable for {course} Year {year} Section {section}")
+                    print(f"DEBUG: Generating algorithmic timetable for {course_name} Year {year} Section {section}")
+                    
+                    # Get the Course object from the course name
+                    try:
+                        course_obj = Course.objects.get(name=course_name, is_active=True)
+                    except Course.DoesNotExist:
+                        print(f"DEBUG: Course '{course_name}' not found, skipping...")
+                        continue
                     
                     # Get existing entries to resolve conflicts
                     existing_entries = TimetableEntry.objects.filter(
-                        course=course, year=year, section=section, is_active=True
+                        course=course_name, year=year, section=section, is_active=True
                     ).count()
                     
                     # Get subjects and teachers for this course/year
                     subjects = Subject.objects.filter(
-                        course=course, year=year, is_active=True
+                        course=course_obj, year=year, is_active=True
                     ).select_related('course')
                     
                     teacher_subjects = TeacherSubject.objects.filter(
-                        subject__course=course,
+                        subject__course=course_obj,
                         subject__year=year,
                         is_active=True
                     ).select_related('subject', 'teacher')
                     
                     if not subjects.exists():
-                        print(f"DEBUG: No subjects found for {course} Year {year}, skipping...")
+                        print(f"DEBUG: No subjects found for {course_name} Year {year}, skipping...")
                         continue
                     
                     if not teacher_subjects.exists():
-                        print(f"DEBUG: No teachers assigned to subjects for {course} Year {year}, skipping...")
+                        print(f"DEBUG: No teachers assigned to subjects for {course_name} Year {year}, skipping...")
                         continue
                     
                     # Build subject requirements for algorithmic solver
@@ -393,7 +400,7 @@ def manage_timetable(request):
                     try:
                         suggestion = AlgorithmicTimetableSuggestion.objects.create(
                             generated_by=request.user,
-                            course=course,
+                            course=course_name,
                             year=year,
                             section=section,
                             academic_year='2023-24',
@@ -423,10 +430,10 @@ def manage_timetable(request):
                             constraint_violations=len(violations),
                             status='generated'
                         )
-                        print(f"DEBUG: Created algorithmic suggestion with ID: {suggestion.id} for {course} Year {year} Section {section}")
+                        print(f"DEBUG: Created algorithmic suggestion with ID: {suggestion.id} for {course_name} Year {year} Section {section}")
                         generated_count += 1
                     except Exception as create_error:
-                        print(f"DEBUG: Error creating AlgorithmicTimetableSuggestion for {course} Year {year} Section {section}: {create_error}")
+                        print(f"DEBUG: Error creating AlgorithmicTimetableSuggestion for {course_name} Year {year} Section {section}: {create_error}")
                         continue
                 
                 if generated_count > 0:
