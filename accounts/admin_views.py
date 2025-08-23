@@ -369,29 +369,59 @@ def manage_timetable(request):
                     for ts in teacher_subjects:
                         subject = ts.subject
                         requirement = {
-                                'subject_id': subject.id,
+                            'subject_id': subject.id,
                             'subject_code': subject.code,
                             'subject_name': subject.name,
-                                'credits': subject.credits,
-                                'periods_per_week': subject.credits * 2,  # 2 periods per credit (standard: 1 credit = 2 periods/week)
-                                'teacher_id': ts.teacher.id,
+                            'credits': subject.credits,
+                            'periods_per_week': subject.credits * 2,  # 2 periods per credit (standard: 1 credit = 2 periods/week)
+                            'teacher_id': ts.teacher.id,
                             'teacher_name': ts.teacher.name
                         }
                         subject_requirements.append(requirement)
                     
+                    # Limit subjects to prevent memory issues (max 8 subjects per course)
+                    if len(subject_requirements) > 8:
+                        print(f"DEBUG: Too many subjects ({len(subject_requirements)}) for {course_name} Year {year}, limiting to 8 to prevent memory issues")
+                        subject_requirements = subject_requirements[:8]
+                    
+                    # Skip if too few subjects (less than 2)
+                    if len(subject_requirements) < 2:
+                        print(f"DEBUG: Too few subjects ({len(subject_requirements)}) for {course_name} Year {year}, skipping...")
+                        continue
+                    
                     # Create algorithmic timetable generator
                     generator = TimetableGenerator(algorithm_type=algorithm_type)
                     
-                    # Generate timetable using algorithm
-                    result = generator.generate_timetable(
-                        subjects=create_subject_requirements(subject_requirements),
-                        days=config.days_per_week,
-                        periods=config.periods_per_day,
-                        break_periods=config.break_periods
-                    )
+                    # Generate timetable using algorithm with timeout protection
+                    result = None
+                    try:
+                        import signal
+                        
+                        def timeout_handler(signum, frame):
+                            raise TimeoutError("Algorithm execution timed out")
+                        
+                        # Set timeout to 10 seconds to prevent memory issues
+                        signal.signal(signal.SIGALRM, timeout_handler)
+                        signal.alarm(10)
+                        
+                        result = generator.generate_timetable(
+                            subjects=create_subject_requirements(subject_requirements),
+                            days=config.days_per_week,
+                            periods=config.periods_per_day,
+                            break_periods=config.break_periods
+                        )
+                        
+                        signal.alarm(0)  # Cancel the alarm
+                    except TimeoutError:
+                        print(f"DEBUG: Algorithm timed out for {course_name} Year {year} Section {section}, skipping...")
+                        continue
+                    except Exception as algo_error:
+                        print(f"DEBUG: Algorithm error for {course_name} Year {year} Section {section}: {algo_error}")
+                        continue
                     
-                    if not result['success']:
-                        print(f"DEBUG: Algorithm failed for {course_name} Year {year} Section {section}: {result['error']}")
+                    # Check if result was generated successfully
+                    if not result or not result.get('success'):
+                        print(f"DEBUG: Algorithm failed or timed out for {course_name} Year {year} Section {section}")
                         continue
                     
                     # Validate constraints
