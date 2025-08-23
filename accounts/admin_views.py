@@ -82,16 +82,23 @@ def admin_dashboard(request):
     
     # Course-wise student distribution with optimized query
     course_distribution = []
-    courses_with_counts = Course.objects.filter(is_active=True).annotate(
-        student_count=Count('studentprofile__user', filter=Q(studentprofile__user__is_active=True))
-    ).values('name', 'full_name', 'student_count').order_by('-student_count')
+    courses = Course.objects.filter(is_active=True)
     
-    for course_data in courses_with_counts:
+    for course in courses:
+        # Count students for this course by matching the course name
+        student_count = StudentProfile.objects.filter(
+            course=course.name,
+            user__is_active=True
+        ).count()
+        
         course_distribution.append({
-            'name': course_data['name'],
-            'full_name': course_data['full_name'],
-            'student_count': course_data['student_count']
+            'name': course.name,
+            'full_name': course.full_name,
+            'student_count': student_count
         })
+    
+    # Sort by student count (descending)
+    course_distribution.sort(key=lambda x: x['student_count'], reverse=True)
     
     # AI insights summary with limit for performance
     ai_insights = PerformanceInsight.objects.filter(
