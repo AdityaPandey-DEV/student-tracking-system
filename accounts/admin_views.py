@@ -5,13 +5,10 @@ Admin dashboard and management views.
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Q, Count, Avg
-from django.db import transaction, models
+from django.db.models import Q
+from django.db import transaction
 from django.utils import timezone
-from datetime import datetime, timedelta
-import json
+from datetime import timedelta
 
 from accounts.models import User, StudentProfile, AdminProfile
 from timetable.models import (
@@ -23,6 +20,11 @@ try:
     from utils.algorithmic_timetable import TimetableGenerator, create_subject_requirements, validate_timetable_constraints
 except ImportError:
     TimetableGenerator = None
+
+try:
+    from utils.ai_service import ai_service
+except ImportError:
+    ai_service = None
 
 def admin_required(view_func):
     """Decorator to ensure user is an admin."""
@@ -63,7 +65,6 @@ def admin_dashboard(request):
     
     # Course-wise student distribution
     # Since StudentProfile.course is a CharField, we need to group manually
-    from django.db.models import Case, When, IntegerField
     
     course_distribution = []
     for course in Course.objects.filter(is_active=True):
@@ -372,7 +373,7 @@ def manage_timetable(request):
                             'subject_code': subject.code,
                             'subject_name': subject.name,
                                 'credits': subject.credits,
-                                'periods_per_week': subject.credits * 2,  # 2 periods per credit
+                                'periods_per_week': subject.credits * 2,  # 2 periods per credit (standard: 1 credit = 2 periods/week)
                                 'teacher_id': ts.teacher.id,
                             'teacher_name': ts.teacher.name
                         }
@@ -390,7 +391,7 @@ def manage_timetable(request):
                     )
                     
                     if not result['success']:
-                        print(f"DEBUG: Algorithm failed for {course} Year {year} Section {section}: {result['error']}")
+                        print(f"DEBUG: Algorithm failed for {course_name} Year {year} Section {section}: {result['error']}")
                         continue
                     
                     # Validate constraints
@@ -398,13 +399,19 @@ def manage_timetable(request):
                     
                     # Create algorithmic timetable suggestion
                     try:
+                        # Get current academic year and semester dynamically
+                        current_year = timezone.now().year
+                        current_month = timezone.now().month
+                        academic_year = f"{current_year}-{current_year + 1}" if current_month >= 6 else f"{current_year-1}-{current_year}"
+                        semester = 1 if current_month in [6, 7, 8, 9, 10, 11, 12] else 2
+                        
                         suggestion = AlgorithmicTimetableSuggestion.objects.create(
                             generated_by=request.user,
                             course=course_name,
                             year=year,
                             section=section,
-                            academic_year='2023-24',
-                            semester=1,
+                            academic_year=academic_year,
+                            semester=semester,
                             algorithm_type=algorithm_type,
                             max_periods_per_day=config.periods_per_day,
                             max_teacher_periods_per_day=config.max_teacher_periods_per_day,
