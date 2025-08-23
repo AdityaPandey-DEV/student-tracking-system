@@ -156,23 +156,43 @@
             </div>
         </div>
 
-        <!-- Optimized Timetable Generator -->
+        <!-- Algorithmic Timetable Generator -->
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
-                        <i class="fas fa-sliders-h me-2"></i>Optimized Timetable Generator
+                        <i class="fas fa-cogs me-2"></i>Algorithmic Timetable Generator
                     </h5>
                 </div>
                 <div class="card-body">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        Generate an optimized timetable using algorithmic scheduling to minimize conflicts and maximize efficiency.
+                        Generate optimized timetables using DSA algorithms (Constraint Satisfaction, Genetic Algorithm, Greedy) with human-centric constraints.
                     </div>
                     
                     <form method="post">
                         {% csrf_token %}
-                        <input type="hidden" name="action" value="generate_ai_timetable">
+                        <input type="hidden" name="action" value="generate_algorithmic_timetable">
+                        
+                        <div class="mb-3">
+                            <label for="config_name" class="form-label">Configuration</label>
+                            <select class="form-select" id="config_name" name="config_name" required>
+                                <option value="default">Default (5 days, 8 periods)</option>
+                                {% for config in timetable_configs %}
+                                    <option value="{{ config.name }}">{{ config.name }} ({{ config.days_per_week }} days, {{ config.periods_per_day }} periods)</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="algorithm_type" class="form-label">Algorithm</label>
+                            <select class="form-select" id="algorithm_type" name="algorithm_type" required>
+                                <option value="constraint_satisfaction">Constraint Satisfaction (Recommended)</option>
+                                <option value="genetic_algorithm">Genetic Algorithm</option>
+                                <option value="greedy_algorithm">Greedy Algorithm</option>
+                                <option value="backtracking">Backtracking</option>
+                            </select>
+                        </div>
                         
                         <div class="mb-3">
                             <label for="ai_course" class="form-label">Course</label>
@@ -211,21 +231,22 @@
                         </button>
                     </form>
 
-                    <!-- Optimized Suggestions Display -->
-                    {% if ai_suggestions %}
+                    <!-- Algorithmic Suggestions Display -->
+                    {% if algorithmic_suggestions %}
                         <div class="mt-4">
-                            <h6 class="text-muted">Recent Optimized Suggestions</h6>
-                            {% for suggestion in ai_suggestions %}
+                            <h6 class="text-muted">Recent Algorithmic Suggestions</h6>
+                            {% for suggestion in algorithmic_suggestions %}
                                 <div class="border p-2 mb-2 rounded">
                                     <div class="d-flex justify-content-between">
                                         <small>
                                             <strong>{{ suggestion.course }} Y{{ suggestion.year }}{{ suggestion.section }}</strong><br>
+                                            <span class="badge bg-info">{{ suggestion.algorithm_type|title }}</span><br>
                                             Score: {{ suggestion.optimization_score|floatformat:1 }}/100
                                         </small>
                                         <small class="text-muted">{{ suggestion.created_at|date:"M d, Y" }}</small>
                                     </div>
                                     <button class="btn btn-sm btn-outline-primary mt-1" 
-                                            onclick="viewSuggestion('{{ suggestion.id }}')">
+                                            onclick="viewAlgorithmicSuggestion('{{ suggestion.id }}')">
                                         <i class="fas fa-eye"></i> View Details
                                     </button>
                                 </div>
@@ -412,6 +433,80 @@
             </div>
         </div>
     </div>
+    
+    <!-- Algorithmic Suggestions Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-cogs me-2"></i>Algorithmic Timetable Suggestions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if algorithmic_suggestions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Course</th>
+                                        <th>Year</th>
+                                        <th>Section</th>
+                                        <th>Algorithm</th>
+                                        <th>Score</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for suggestion in algorithmic_suggestions %}
+                                    <tr>
+                                        <td>{{ suggestion.course }}</td>
+                                        <td>{{ suggestion.year }}</td>
+                                        <td>{{ suggestion.section }}</td>
+                                        <td>
+                                            <span class="badge bg-info">
+                                                {{ suggestion.algorithm_type|title }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{% if suggestion.optimization_score >= 80 %}success{% elif suggestion.optimization_score >= 60 %}warning{% else %}danger{% endif %}">
+                                                {{ suggestion.optimization_score }}%
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{% if suggestion.status == 'generated' %}info{% elif suggestion.status == 'approved' %}success{% elif suggestion.status == 'implemented' %}primary{% else %}secondary{% endif %}">
+                                                {{ suggestion.status|title }}
+                                            </span>
+                                        </td>
+                                        <td>{{ suggestion.created_at|date:"M d, Y" }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-info" onclick="viewAlgorithmicSuggestion('{{ suggestion.id }}')">
+                                                <i class="fas fa-eye me-1"></i>View
+                                            </button>
+                                            {% if suggestion.status == 'generated' %}
+                                            <button class="btn btn-sm btn-success" onclick="applyAlgorithmicSuggestion('{{ suggestion.id }}')">
+                                                <i class="fas fa-check me-1"></i>Apply
+                                            </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-cogs fa-3x mb-3"></i>
+                            <p>No algorithmic suggestions generated yet.</p>
+                            <p>Use the generator above to create optimized timetables using DSA algorithms.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Edit Entry Modal -->
@@ -488,8 +583,152 @@ function deleteEntry(entryId) {
     }
 }
 
-function viewSuggestion(suggestionId) {
-    alert('View AI suggestion details for ID: ' + suggestionId);
+function viewAlgorithmicSuggestion(suggestionId) {
+    fetch(`/api/admin/suggestions/${suggestionId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const suggestion = data.suggestion;
+                showSuggestionModal(suggestion);
+            } else {
+                alert('Error loading suggestion: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading suggestion');
+        });
+}
+
+function applyAlgorithmicSuggestion(suggestionId) {
+    if (confirm('Are you sure you want to apply this algorithmic suggestion? This will replace existing timetable entries.')) {
+        fetch(`/api/admin/suggestions/${suggestionId}/apply/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Suggestion applied successfully! Created ${data.created} entries using ${data.algorithm} algorithm.`);
+                location.reload();
+            } else {
+                alert('Error applying suggestion: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error applying suggestion');
+        });
+    }
+}
+
+function showSuggestionModal(suggestion) {
+    const modal = new bootstrap.Modal(document.getElementById('suggestionModal') || createSuggestionModal());
+    const modalContent = document.getElementById('suggestionModalContent');
+    
+    modalContent.innerHTML = `
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-cogs me-2"></i>Algorithmic Timetable Suggestion
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Course:</strong> ${suggestion.course}</p>
+                        <p><strong>Year:</strong> ${suggestion.year}</p>
+                        <p><strong>Section:</strong> ${suggestion.section}</p>
+                        <p><strong>Algorithm:</strong> ${suggestion.algorithm_type}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Score:</strong> ${suggestion.optimization_score}%</p>
+                        <p><strong>Status:</strong> ${suggestion.status}</p>
+                        <p><strong>Created:</strong> ${new Date(suggestion.created_at).toLocaleDateString()}</p>
+                        <p><strong>Violations:</strong> ${suggestion.constraint_violations}</p>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <h6><i class="fas fa-chart-line me-2"></i>Analysis</h6>
+                <p>${suggestion.analysis}</p>
+                
+                <h6><i class="fas fa-table me-2"></i>Timetable Grid</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Period</th>
+                                <th>Monday</th>
+                                <th>Tuesday</th>
+                                <th>Wednesday</th>
+                                <th>Thursday</th>
+                                <th>Friday</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${generateTimetableRows(suggestion.grid)}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    modal.show();
+}
+
+function generateTimetableRows(grid) {
+    const days = ['0', '1', '2', '3', '4'];
+    const maxPeriods = Math.max(...Object.values(grid).map(day => day.length));
+    
+    let rows = '';
+    for (let period = 0; period < maxPeriods; period++) {
+        rows += '<tr>';
+        rows += `<td><strong>P${period + 1}</strong></td>`;
+        
+        for (const day of days) {
+            const dayData = grid[day] || [];
+            const cell = dayData[period] || {};
+            
+            if (cell.subject_code === '-') {
+                rows += '<td class="text-muted">Break</td>';
+            } else if (cell.subject_code) {
+                rows += `<td>
+                    <strong>${cell.subject_code}</strong><br>
+                    <small>${cell.subject_name}</small><br>
+                    <small class="text-info">${cell.teacher_name}</small>
+                </td>`;
+            } else {
+                rows += '<td class="text-muted">Free</td>';
+            }
+        }
+        rows += '</tr>';
+    }
+    return rows;
+}
+
+function createSuggestionModal() {
+    const modalHtml = `
+        <div class="modal fade" id="suggestionModal" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Timetable Suggestion Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="suggestionModalContent">
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    return document.getElementById('suggestionModal');
 }
 
 function exportTimetable() {

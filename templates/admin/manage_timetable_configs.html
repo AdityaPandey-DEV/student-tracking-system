@@ -1,0 +1,367 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Timetable Configurations - Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">Manage Timetable Configurations</h1>
+                    <p class="text-muted">Configure algorithmic timetable generation parameters</p>
+                </div>
+                <div>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createConfigModal">
+                        <i class="fas fa-plus me-1"></i>New Configuration
+                    </button>
+                    <a href="{% url 'accounts:manage_timetable' %}" class="btn btn-outline-primary ms-2">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Timetable
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-cogs me-2"></i>Algorithmic Timetable Configurations
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if configs %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Grid Size</th>
+                                        <th>Break Periods</th>
+                                        <th>Constraints</th>
+                                        <th>Algorithm</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for config in configs %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ config.name }}</strong>
+                                            {% if config.description %}
+                                                <br><small class="text-muted">{{ config.description }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {{ config.days_per_week }} days × {{ config.periods_per_day }} periods<br>
+                                            <small class="text-muted">{{ config.period_duration }} min each</small>
+                                        </td>
+                                        <td>
+                                            {% if config.break_periods %}
+                                                {% for period in config.break_periods %}
+                                                    <span class="badge bg-warning">P{{ period }}</span>
+                                                {% endfor %}
+                                                <br><small class="text-muted">{{ config.break_duration }} min breaks</small>
+                                            {% else %}
+                                                <span class="text-muted">No breaks</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small>
+                                                <strong>Teacher:</strong> Max {{ config.max_teacher_periods_per_day }}/day<br>
+                                                <strong>Consecutive:</strong> Max {{ config.max_consecutive_periods }}<br>
+                                                <strong>Subject:</strong> Max {{ config.max_subject_periods_per_day }}/day
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ config.algorithm_type|title }}</span><br>
+                                            <small class="text-muted">{{ config.max_iterations }} iterations</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{% if config.is_active %}success{% else %}secondary{% endif %}">
+                                                {{ config.is_active|yesno:"Active,Inactive" }}
+                                            </span>
+                                        </td>
+                                        <td>{{ config.created_at|date:"M d, Y" }}</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button class="btn btn-outline-info" onclick="editConfig({{ config.id }})">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-outline-{% if config.is_active %}warning{% else %}success{% endif %}" 
+                                                        onclick="toggleConfig({{ config.id }})">
+                                                    <i class="fas fa-{% if config.is_active %}pause{% else %}play{% endif %}"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger" onclick="deleteConfig({{ config.id }}, '{{ config.name|escapejs }}')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-cogs fa-3x mb-3"></i>
+                            <p>No timetable configurations found.</p>
+                            <p>Create your first configuration to get started with algorithmic timetable generation.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Configuration Modal -->
+<div class="modal fade" id="createConfigModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Timetable Configuration</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_config">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="config_name" class="form-label">Configuration Name *</label>
+                                <input type="text" class="form-control" id="config_name" name="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="config_description" class="form-label">Description</label>
+                                <textarea class="form-control" id="config_description" name="description" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="days_per_week" class="form-label">Days per Week *</label>
+                                <select class="form-select" id="days_per_week" name="days_per_week" required>
+                                    <option value="5">5 days (Mon-Fri)</option>
+                                    <option value="6">6 days (Mon-Sat)</option>
+                                    <option value="7">7 days (Mon-Sun)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="periods_per_day" class="form-label">Periods per Day *</label>
+                                <select class="form-select" id="periods_per_day" name="periods_per_day" required>
+                                    <option value="6">6 periods</option>
+                                    <option value="7">7 periods</option>
+                                    <option value="8" selected>8 periods</option>
+                                    <option value="9">9 periods</option>
+                                    <option value="10">10 periods</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="period_duration" class="form-label">Period Duration (min) *</label>
+                                <select class="form-select" id="period_duration" name="period_duration" required>
+                                    <option value="40">40 minutes</option>
+                                    <option value="45">45 minutes</option>
+                                    <option value="50" selected>50 minutes</option>
+                                    <option value="55">55 minutes</option>
+                                    <option value="60">60 minutes</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="break_periods" class="form-label">Break Periods</label>
+                                <input type="text" class="form-control" id="break_periods" name="break_periods" 
+                                       placeholder="e.g., 3,6 (comma-separated)" 
+                                       title="Enter period numbers where breaks should occur, separated by commas">
+                                <small class="form-text text-muted">Leave empty for no breaks</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="break_duration" class="form-label">Break Duration (min)</label>
+                                <select class="form-select" id="break_duration" name="break_duration">
+                                    <option value="10">10 minutes</option>
+                                    <option value="15" selected>15 minutes</option>
+                                    <option value="20">20 minutes</option>
+                                    <option value="25">25 minutes</option>
+                                    <option value="30">30 minutes</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="max_teacher_periods_per_day" class="form-label">Max Teacher Periods/Day</label>
+                                <select class="form-select" id="max_teacher_periods_per_day" name="max_teacher_periods_per_day">
+                                    <option value="3">3 periods</option>
+                                    <option value="4">4 periods</option>
+                                    <option value="5" selected>5 periods</option>
+                                    <option value="6">6 periods</option>
+                                    <option value="7">7 periods</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="max_consecutive_periods" class="form-label">Max Consecutive Periods</label>
+                                <select class="form-select" id="max_consecutive_periods" name="max_consecutive_periods">
+                                    <option value="1">1 period</option>
+                                    <option value="2" selected>2 periods</option>
+                                    <option value="3">3 periods</option>
+                                    <option value="4">4 periods</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="max_subject_periods_per_day" class="form-label">Max Subject Periods/Day</label>
+                                <select class="form-select" id="max_subject_periods_per_day" name="max_subject_periods_per_day">
+                                    <option value="2">2 periods</option>
+                                    <option value="3" selected>3 periods</option>
+                                    <option value="4">4 periods</option>
+                                    <option value="5">5 periods</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="algorithm_type" class="form-label">Default Algorithm</label>
+                                <select class="form-select" id="algorithm_type" name="algorithm_type">
+                                    <option value="constraint_satisfaction" selected>Constraint Satisfaction</option>
+                                    <option value="genetic_algorithm">Genetic Algorithm</option>
+                                    <option value="greedy_algorithm">Greedy Algorithm</option>
+                                    <option value="backtracking">Backtracking</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="max_iterations" class="form-label">Max Iterations</label>
+                                <input type="number" class="form-control" id="max_iterations" name="max_iterations" 
+                                       value="1000" min="100" max="10000">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="timeout_seconds" class="form-label">Timeout (seconds)</label>
+                                <input type="number" class="form-control" id="timeout_seconds" name="timeout_seconds" 
+                                       value="30" min="10" max="300">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Configuration</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Configuration Modal -->
+<div class="modal fade" id="editConfigModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Timetable Configuration</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="editConfigForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_config">
+                <input type="hidden" name="config_id" id="edit_config_id">
+                <div class="modal-body" id="editConfigModalBody">
+                    <!-- Content will be loaded dynamically -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Configuration</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editConfig(configId) {
+    // Load configuration data and populate edit form
+    // This would typically fetch data via AJAX
+    console.log('Edit config:', configId);
+    const modal = new bootstrap.Modal(document.getElementById('editConfigModal'));
+    modal.show();
+}
+
+function toggleConfig(configId) {
+    if (confirm('Are you sure you want to toggle this configuration status?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `
+            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="toggle_config">
+            <input type="hidden" name="config_id" value="${configId}">
+        `;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function deleteConfig(configId, configName) {
+    if (confirm(`Are you sure you want to delete the configuration "${configName}"? This action cannot be undone.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `
+            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="delete_config">
+            <input type="hidden" name="config_id" value="${configId}">
+        `;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Auto-format break periods input
+document.getElementById('break_periods').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/[^0-9,]/g, '');
+    e.target.value = value;
+});
+</script>
+
+<style>
+.badge {
+    font-size: 0.75rem;
+}
+
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.7rem;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

@@ -44,8 +44,94 @@ class ChatMessage(models.Model):
     def __str__(self):
         return f"{self.chat.session_id} - {self.sender}: {self.message[:50]}"
 
+class AlgorithmicTimetableSuggestion(models.Model):
+    """Algorithmic timetable suggestions using DSA and DBMS principles."""
+    STATUS_CHOICES = [
+        ('generated', 'Generated'),
+        ('under_review', 'Under Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('implemented', 'Implemented'),
+    ]
+    
+    ALGORITHM_CHOICES = [
+        ('constraint_satisfaction', 'Constraint Satisfaction'),
+        ('genetic_algorithm', 'Genetic Algorithm'),
+        ('greedy_algorithm', 'Greedy Algorithm'),
+        ('backtracking', 'Backtracking Algorithm'),
+    ]
+    
+    generated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='algorithmic_suggestions')
+    course = models.CharField(max_length=50)
+    year = models.IntegerField()
+    section = models.CharField(max_length=5)
+    academic_year = models.CharField(max_length=10)
+    semester = models.IntegerField()
+    
+    # Algorithm configuration
+    algorithm_type = models.CharField(max_length=25, choices=ALGORITHM_CHOICES, default='constraint_satisfaction')
+    max_periods_per_day = models.IntegerField(default=8, help_text="Maximum periods per day")
+    max_teacher_periods_per_day = models.IntegerField(default=5, help_text="Maximum periods a teacher can teach per day")
+    max_consecutive_periods = models.IntegerField(default=2, help_text="Maximum consecutive periods for same subject")
+    break_duration = models.IntegerField(default=15, help_text="Break duration in minutes")
+    
+    # Generated data
+    suggestion_data = models.JSONField(help_text="Generated timetable data using algorithms")
+    optimization_score = models.FloatField(default=0.0, help_text="Algorithm optimization score (0-100)")
+    conflicts_resolved = models.IntegerField(default=0)
+    constraint_violations = models.IntegerField(default=0)
+    
+    # Status and metadata
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='generated')
+    notes = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_algorithmic_suggestions')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-optimization_score', '-created_at']
+    
+    def __str__(self):
+        return f"Algorithmic Timetable - {self.course} Y{self.year}{self.section} - {self.algorithm_type}"
+
+class TimetableConfiguration(models.Model):
+    """Configuration for timetable generation algorithms."""
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    
+    # Grid configuration
+    days_per_week = models.IntegerField(default=5, help_text="Number of working days")
+    periods_per_day = models.IntegerField(default=8, help_text="Number of periods per day")
+    period_duration = models.IntegerField(default=50, help_text="Period duration in minutes")
+    
+    # Break configuration
+    break_periods = models.JSONField(default=list, help_text="List of break period numbers")
+    break_duration = models.IntegerField(default=15, help_text="Break duration in minutes")
+    
+    # Constraint configuration
+    max_teacher_periods_per_day = models.IntegerField(default=5)
+    max_consecutive_periods = models.IntegerField(default=2)
+    max_subject_periods_per_day = models.IntegerField(default=3)
+    
+    # Algorithm settings
+    algorithm_type = models.CharField(max_length=25, choices=AlgorithmicTimetableSuggestion.ALGORITHM_CHOICES, default='constraint_satisfaction')
+    max_iterations = models.IntegerField(default=1000, help_text="Maximum algorithm iterations")
+    timeout_seconds = models.IntegerField(default=30, help_text="Algorithm timeout in seconds")
+    
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['name']
+    
+    def __str__(self):
+        return f"{self.name} - {self.days_per_week} days, {self.periods_per_day} periods"
+
+# Keep other models for backward compatibility but mark as deprecated
 class TimetableSuggestion(models.Model):
-    """AI-generated timetable suggestions and optimizations."""
+    """Deprecated: Use AlgorithmicTimetableSuggestion instead."""
     STATUS_CHOICES = [
         ('generated', 'Generated'),
         ('under_review', 'Under Review'),

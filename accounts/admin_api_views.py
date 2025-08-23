@@ -17,8 +17,7 @@ from timetable.models import (
     Course, Subject, Teacher, TeacherSubject, TimeSlot, Room,
     TimetableEntry, Enrollment, Attendance, Announcement
 )
-from ai_features.models import PerformanceInsight
-from ai_features.models import TimetableSuggestion
+from ai_features.models import PerformanceInsight, AlgorithmicTimetableSuggestion
 
 def admin_required_api(view_func):
     """Decorator to ensure user is an admin for API calls."""
@@ -474,26 +473,27 @@ def get_filtered_timetable_entries(request):
 @login_required
 @admin_required_api
 @require_http_methods(["GET"])
-def get_ai_suggestion(request, suggestion_id):
-    """Get AI timetable suggestion details."""
+def get_algorithmic_suggestion(request, suggestion_id):
+    """Get algorithmic timetable suggestion details."""
     try:
-        from ai_features.models import TimetableSuggestion
+        suggestion = get_object_or_404(AlgorithmicTimetableSuggestion, id=suggestion_id)
         
-        suggestion = get_object_or_404(TimetableSuggestion, id=suggestion_id)
-        
-        # Prefer algorithmic analysis text
         suggestion_data = {
             'id': suggestion.id,
             'course': suggestion.course,
             'year': suggestion.year,
             'section': suggestion.section,
+            'algorithm_type': suggestion.algorithm_type,
             'optimization_score': suggestion.optimization_score,
             'status': suggestion.status,
             'is_applied': suggestion.status in ['approved', 'implemented'],
             'created_at': suggestion.created_at.isoformat(),
-            'analysis': 'Algorithmic suggestion that balances subject load, avoids teacher double-booking, and limits long continuous stretches.',
+            'analysis': f'Algorithmic suggestion using {suggestion.algorithm_type} algorithm that balances subject load, avoids teacher double-booking, and respects human constraints.',
             'grid': suggestion.suggestion_data.get('grid', {}),
-            'subjects': suggestion.suggestion_data.get('subjects', [])
+            'subjects': suggestion.suggestion_data.get('subjects', []),
+            'config': suggestion.suggestion_data.get('config', {}),
+            'execution_time': suggestion.suggestion_data.get('execution_time', 0),
+            'constraint_violations': suggestion.constraint_violations
         }
         
         return JsonResponse({'success': True, 'suggestion': suggestion_data})
@@ -507,10 +507,10 @@ def get_ai_suggestion(request, suggestion_id):
 @login_required
 @admin_required_api
 @require_http_methods(["POST"])
-def apply_ai_suggestion(request, suggestion_id):
-    """Apply a generated timetable suggestion to actual TimetableEntry records."""
+def apply_algorithmic_suggestion(request, suggestion_id):
+    """Apply an algorithmic timetable suggestion to actual TimetableEntry records."""
     try:
-        suggestion = get_object_or_404(TimetableSuggestion, id=suggestion_id)
+        suggestion = get_object_or_404(AlgorithmicTimetableSuggestion, id=suggestion_id)
         data = suggestion.suggestion_data or {}
         grid = data.get('grid', {})
         course = suggestion.course
@@ -603,13 +603,15 @@ def apply_ai_suggestion(request, suggestion_id):
 
         return JsonResponse({
             'success': True,
-            'message': 'Suggestion applied successfully',
+            'message': f'Algorithmic suggestion ({suggestion.algorithm_type}) applied successfully',
             'created': created,
             'skipped': {
                 'no_teacher': skipped_no_teacher,
                 'no_room': skipped_no_room,
                 'break_slots': skipped_break
-            }
+            },
+            'algorithm': suggestion.algorithm_type,
+            'optimization_score': suggestion.optimization_score
         })
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=400)

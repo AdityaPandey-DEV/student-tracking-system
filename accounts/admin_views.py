@@ -18,11 +18,11 @@ from timetable.models import (
     Course, Subject, Teacher, TeacherSubject, TimeSlot, Room,
     TimetableEntry, Enrollment, Attendance, Announcement
 )
-from ai_features.models import TimetableSuggestion, PerformanceInsight, AIAnalyticsReport
+from ai_features.models import AlgorithmicTimetableSuggestion, TimetableConfiguration, PerformanceInsight, AIAnalyticsReport
 try:
-    from utils.ai_service import ai_service
+    from utils.algorithmic_timetable import TimetableGenerator, create_subject_requirements, validate_timetable_constraints
 except ImportError:
-    ai_service = None
+    TimetableGenerator = None
 
 def admin_required(view_func):
     """Decorator to ensure user is an admin."""
@@ -87,7 +87,7 @@ def admin_dashboard(request):
     ).order_by('-impact_score')[:3]
     
     # Timetable optimization suggestions
-    optimization_suggestions = TimetableSuggestion.objects.filter(
+    optimization_suggestions = AlgorithmicTimetableSuggestion.objects.filter(
         status='generated'
     ).order_by('-optimization_score')[:3]
     
@@ -102,7 +102,7 @@ def admin_dashboard(request):
         'recent_announcements': recent_announcements,
         'course_distribution': course_distribution,
         'ai_insights': ai_insights,
-        'optimization_suggestions': optimization_suggestions
+        'algorithmic_suggestions': optimization_suggestions
     }
     
     return render(request, 'admin/dashboard.html', context)
@@ -286,8 +286,33 @@ def manage_timetable(request):
             except Exception as e:
                 messages.error(request, f'Failed to add timetable entry: {str(e)}')
         
-        elif action == 'generate_ai_timetable':
+        elif action == 'generate_algorithmic_timetable':
             try:
+                if not TimetableGenerator:
+                    messages.error(request, 'Algorithmic timetable generator not available.')
+                    return redirect('accounts:manage_timetable')
+                
+                # Get configuration
+                config_name = request.POST.get('config_name', 'default')
+                algorithm_type = request.POST.get('algorithm_type', 'constraint_satisfaction')
+                
+                # Get or create configuration
+                config, created = TimetableConfiguration.objects.get_or_create(
+                    name=config_name,
+                    defaults={
+                        'days_per_week': 5,
+                        'periods_per_day': 8,
+                        'period_duration': 50,
+                        'break_periods': [3, 6],  # Break after 3rd and 6th period
+                        'break_duration': 15,
+                        'max_teacher_periods_per_day': 5,
+                        'max_consecutive_periods': 2,
+                        'max_subject_periods_per_day': 3,
+                        'algorithm_type': algorithm_type,
+                        'created_by': request.user
+                    }
+                )
+                
                 # Get all active course/year/section combinations
                 all_combinations = TimetableEntry.objects.filter(
                     is_active=True
@@ -305,7 +330,7 @@ def manage_timetable(request):
                     year = combo['year']
                     section = combo['section']
                     
-                    print(f"DEBUG: Generating timetable for {course} Year {year} Section {section}")
+                    print(f"DEBUG: Generating algorithmic timetable for {course} Year {year} Section {section}")
                     
                     # Get existing entries to resolve conflicts
                     existing_entries = TimetableEntry.objects.filter(
@@ -331,399 +356,86 @@ def manage_timetable(request):
                         print(f"DEBUG: No teachers assigned to subjects for {course} Year {year}, skipping...")
                         continue
                     
-                    # Build subject requirements
-                    subject_requirements = {}
+                    # Build subject requirements for algorithmic solver
+                    subject_requirements = []
                     for ts in teacher_subjects:
                         subject = ts.subject
-                        if subject.subject_code not in subject_requirements:
-                            subject_requirements[subject.subject_code] = {
+                        requirement = {
                                 'subject_id': subject.id,
-                                'subject_code': subject.subject_code,
-                                'subject_name': subject.subject_name,
+                            'subject_code': subject.code,
+                            'subject_name': subject.name,
                                 'credits': subject.credits,
                                 'periods_per_week': subject.credits * 2,  # 2 periods per credit
-                                'remaining': subject.credits * 2,
                                 'teacher_id': ts.teacher.id,
-                                'teacher_name': ts.teacher.user.get_full_name() or ts.teacher.user.username
-                            }
-                        else:
-                            # Multiple teachers for same subject - use the first one for now
-                            pass
+                            'teacher_name': ts.teacher.name
+                        }
+                        subject_requirements.append(requirement)
                     
-                    # Get time slots and build segments
-                    time_slots = TimeSlot.objects.filter(is_active=True).order_by('period_number')
-                    teaching_period_numbers = [ts.period_number for ts in time_slots if not ts.is_break]
-                    break_periods = [ts.period_number for ts in time_slots if ts.is_break]
+                    # Create algorithmic timetable generator
+                    generator = TimetableGenerator(algorithm_type=algorithm_type)
                     
-                    # Build segments based on breaks
-                    segments = []
-                    current_segment = []
-                    for ts in time_slots:
-                        if ts.is_break:
-                            if current_segment:
-                                segments.append(current_segment)
-                                current_segment = []
-                        else:
-                            current_segment.append(ts.period_number)
-                    if current_segment:
-                        segments.append(current_segment)
+                    # Generate timetable using algorithm
+                    result = generator.generate_timetable(
+                        subjects=create_subject_requirements(subject_requirements),
+                        days=config.days_per_week,
+                        periods=config.periods_per_day,
+                        break_periods=config.break_periods
+                    )
                     
-                    print(f"DEBUG: Built {len(segments)} segments: {segments}")
-                    print(f"DEBUG: Teaching periods: {teaching_period_numbers}")
-                    print(f"DEBUG: Break periods: {break_periods}")
-                    
-                    # Initialize grid
-                    days = [0, 1, 2, 3, 4]  # Monday to Friday
-                    grid = {}
-                    subject_list = []
-                    
-                    # Track teacher constraints
-                    busy = set()  # (teacher_id, day, period)
-                    teacher_daily = {}  # (teacher_id, day) -> count
-                    teacher_consec = {}  # (teacher_id, day) -> consecutive count
-                    teacher_last_period = {}  # (teacher_id, day) -> last period number
-                    subject_daily_count = {}  # (subject_id, day) -> count
-                    subject_day_cap = {}  # subject_id -> max per day
-                    
-                    # Teacher constraints
-                    max_consecutive = 2
-                    max_daily_load = 6
-                    
-                    # Set per-day caps based on credits
-                    for subject_code, req in subject_requirements.items():
-                        max_per_day = min(3, max(1, req['credits'] // 2))  # Cap at 3, min 1
-                        subject_day_cap[req['subject_id']] = max_per_day
-                    
-                    # First pass: fill required periods respecting constraints
-                    day_rotation = 0
-                    for day in days:
-                        day_rows = []
-                        last_subject_id = None
-                        
-                        # First, add all periods for this day (including breaks)
-                        for period_num in range(1, 11):  # Periods 1-10
-                            # Check if this period is a break
-                            is_break_period = period_num in break_periods
-                            
-                            if is_break_period:
-                                # Add break period
-                                day_rows.append({
-                                    'period_number': period_num,
-                                    'subject_code': '-',
-                                    'subject_name': 'Break',
-                                    'teacher_name': ''
-                                })
-                                continue
-                            
-                            # This is a teaching period, try to place a subject
-                            if period_num not in teaching_period_numbers:
-                                continue
-                            
-                            # Try to place subjects with remaining periods
-                            candidates = sorted(
-                                [s for s in subject_requirements.values() if s['remaining'] > 0],
-                                key=lambda x: x['remaining'], reverse=True
-                            )
-                            
-                            placed = False
-                            for item in candidates:
-                                # Avoid immediate repeat if last placed in this segment is same subject
-                                if item['subject_code'] == last_subject_id:
+                    if not result['success']:
+                        print(f"DEBUG: Algorithm failed for {course} Year {year} Section {section}: {result['error']}")
                                     continue
                                 
-                                # Check teacher availability
-                                t_id = item['teacher_id']
-                                if t_id and (t_id, day, period_num) in busy:
-                                    continue
-                                
-                                # Check daily load limit
-                                if t_id and teacher_daily.get((t_id, day), 0) >= max_daily_load:
-                                    continue
-                                
-                                # Consecutive constraint relative to adjacent period number
-                                if t_id:
-                                    key = (t_id, day)
-                                    last = teacher_last_period.get(key)
-                                    consec = teacher_consec.get(key, 0)
-                                    if last is not None and period_num == last + 1 and consec >= max_consecutive:
-                                        continue
-                                
-                                # Place
-                                day_rows.append({
-                                    'period_number': period_num,
-                                    'subject_code': item['subject_code'],
-                                    'subject_name': item['subject_name'],
-                                    'teacher_name': item['teacher_name']
-                                })
-                                item['remaining'] -= 1
-                                last_subject_id = item['subject_code']
-                                placed = True
-                                subject_daily_count[(item['subject_id'], day)] = subject_daily_count.get((item['subject_id'], day), 0) + 1
-                                
-                                if t_id:
-                                    key = (t_id, day)
-                                    last = teacher_last_period.get(key)
-                                    if last is not None and period_num == last + 1:
-                                        teacher_consec[key] = teacher_consec.get(key, 0) + 1
-                                    else:
-                                        teacher_consec[key] = 1
-                                    teacher_last_period[key] = period_num
-                                    teacher_daily[key] = teacher_daily.get(key, 0) + 1
-                                break
-                            
-                            if not placed:
-                                # Leave free if no feasible assignment
-                                day_rows.append({
-                                    'period_number': period_num,
-                                    'subject_code': '-',
-                                    'subject_name': 'Free Period',
-                                    'teacher_name': ''
-                                })
-                                last_subject_id = None
-                        
-                        grid[str(day)] = day_rows
-                        day_rotation += 1
+                    # Validate constraints
+                    violations = validate_timetable_constraints(result['grid'], result['subjects'])
                     
-                    # Second pass: try to fill remaining Free Periods by relaxing per-day caps slightly (still honoring teacher constraints)
-                    for di, day in enumerate(days):
-                        # Build quick access map for this day's cells
-                        day_cells = grid[str(day)]
-                        used_periods = set(cell['period_number'] for cell in day_cells if cell['subject_code'] != '-')
-                        
-                        # Iterate through all periods 1-10, but skip break periods
-                        for period_num in range(1, 11):
-                            # Skip break periods
-                            if period_num in break_periods:
-                                continue
-                                
-                                # If already filled, skip
-                                if period_num in used_periods:
-                                    continue
-                                
-                                # Try to place any subject with remaining or under soft cap (cap + 1)
-                                soft_cap_ok = lambda sid: subject_daily_count.get((sid, day), 0) < (subject_day_cap.get(sid, 1) + 1)
-                                
-                                # Sort by remaining desc
-                                candidates = sorted(
-                                    [s for s in subject_requirements.values() if s['remaining'] > 0 and soft_cap_ok(s['subject_id'])],
-                                    key=lambda x: x['remaining'], reverse=True
-                                )
-                                
-                                placed = False
-                                # Get the last subject from the current day to avoid immediate repeats
-                                last_subject_id = None
-                                for cell in day_cells:
-                                    if cell['subject_code'] != '-' and cell['period_number'] < period_num:
-                                        last_subject_id = cell['subject_code']
-                                
-                                for item in candidates:
-                                    # Avoid immediate repeat if last filled in this segment/day is same subject
-                                    if item['subject_code'] == last_subject_id:
-                                        continue
-                                    
-                                    t_id = item['teacher_id']
-                                    if t_id and (t_id, day, period_num) in busy:
-                                        continue
-                                    
-                                    if t_id and teacher_daily.get((t_id, day), 0) >= max_daily_load:
-                                        continue
-                                    
-                                    if t_id:
-                                        key = (t_id, day)
-                                        last = teacher_last_period.get(key)
-                                        consec = teacher_consec.get(key, 0)
-                                        if last is not None and period_num == last + 1 and consec >= max_consecutive:
-                                            continue
-                                    
-                                    # Place now by replacing the Free Period cell
-                                    for idx, cell in enumerate(day_cells):
-                                        if cell['period_number'] == period_num and cell['subject_code'] == '-':
-                                            day_cells[idx] = {
-                                                'period_number': period_num,
-                                                'subject_code': item['subject_code'],
-                                                'subject_name': item['subject_name'],
-                                                'teacher_name': item['teacher_name']
-                                            }
-                                            
-                                            if item['remaining'] > 0:
-                                                item['remaining'] -= 1
-                                            
-                                            subject_daily_count[(item['subject_id'], day)] = subject_daily_count.get((item['subject_id'], day), 0) + 1
-                                            
-                                            if t_id:
-                                                key = (t_id, day)
-                                                last = teacher_last_period.get(key)
-                                                if last is not None and period_num == last + 1:
-                                                    teacher_consec[key] = teacher_consec.get(key, 0) + 1
-                                                else:
-                                                    teacher_consec[key] = 1
-                                                teacher_last_period[key] = period_num
-                                                teacher_daily[key] = teacher_daily.get(key, 0) + 1
-                                            
-                                            placed = True
-                                            break
-                                    
-                                    if placed:
-                                        break
-                    
-                    # Third pass: aggressive fill - ignore remaining credits but respect teacher constraints
-                    for di, day in enumerate(days):
-                        day_cells = grid[str(day)]
-                        used_periods = set(cell['period_number'] for cell in day_cells if cell['subject_code'] != '-')
-                        
-                        # Iterate through all periods 1-10, but skip break periods
-                        for period_num in range(1, 11):
-                            # Skip break periods
-                            if period_num in break_periods:
-                                continue
-                                
-                                if period_num in used_periods:
-                                    continue
-                                
-                                # Try any subject that can fit (respecting teacher constraints)
-                                candidates = sorted(
-                                    [s for s in subject_requirements.values()],
-                                    key=lambda x: x['remaining'], reverse=True
-                                )
-                                
-                                placed = False
-                                last_subject_id = None
-                                for cell in day_cells:
-                                    if cell['subject_code'] != '-' and cell['period_number'] < period_num:
-                                        last_subject_id = cell['subject_code']
-                                
-                                for item in candidates:
-                                    if item['subject_code'] == last_subject_id:
-                                        continue
-                                    
-                                    t_id = item['teacher_id']
-                                    if t_id and (t_id, day, period_num) in busy:
-                                        continue
-                                    
-                                    if t_id and teacher_daily.get((t_id, day), 0) >= max_daily_load:
-                                        continue
-                                    
-                                    if t_id:
-                                        key = (t_id, day)
-                                        last = teacher_last_period.get(key)
-                                        consec = teacher_consec.get(key, 0)
-                                        if last is not None and period_num == last + 1 and consec >= max_consecutive:
-                                            continue
-                                    
-                                    # Place by replacing Free Period
-                                    for idx, cell in enumerate(day_cells):
-                                        if cell['period_number'] == period_num and cell['subject_code'] == '-':
-                                            day_cells[idx] = {
-                                                'period_number': period_num,
-                                                'subject_code': item['subject_code'],
-                                                'subject_name': item['subject_name'],
-                                                'teacher_name': item['teacher_name']
-                                            }
-                                            
-                                            if item['remaining'] > 0:
-                                                item['remaining'] -= 1
-                                            
-                                            subject_daily_count[(item['subject_id'], day)] = subject_daily_count.get((item['subject_id'], day), 0) + 1
-                                            
-                                            if t_id:
-                                                key = (t_id, day)
-                                                last = teacher_last_period.get(key)
-                                                if last is not None and period_num == last + 1:
-                                                    teacher_consec[key] = teacher_consec.get(key, 0) + 1
-                                                else:
-                                                    teacher_consec[key] = 1
-                                                teacher_last_period[key] = period_num
-                                                teacher_daily[key] = teacher_daily.get(key, 0) + 1
-                                            
-                                            placed = True
-                                            break
-                                    
-                                    if placed:
-                                        break
-                    
-                    # Build subject list for the suggestion
-                    subject_list = []
-                    for subject_code, req in subject_requirements.items():
-                        subject_list.append({
-                            'code': subject_code,
-                            'name': req['subject_name'],
-                            'teacher_name': req['teacher_name'],
-                            'credits': req['credits'],
-                            'periods_per_week': req['periods_per_week']
-                        })
-                    
-                    # Calculate optimization metrics
-                    total_slots = len(teaching_period_numbers) * len(days)
-                    filled_slots = sum(1 for day in days for cell in grid[str(day)] if cell['subject_code'] != '-')
-                    utilization = (filled_slots / total_slots) * 100 if total_slots > 0 else 0
-                    
-                    # Coverage across days
-                    day_coverage = []
-                    for day in days:
-                        day_filled = sum(1 for cell in grid[str(day)] if cell['subject_code'] != '-')
-                        day_coverage.append(day_filled / len(teaching_period_numbers) if len(teaching_period_numbers) > 0 else 0)
-                    avg_coverage = sum(day_coverage) / len(day_coverage) if day_coverage else 0
-                    coverage_bonus = avg_coverage * 10.0  # up to +10
-                    
-                    # Fairness (consecutive periods)
-                    unmet_demand = sum(max(0, req['remaining']) for req in subject_requirements.values())
-                    
-                    if teacher_consec:
-                        avg_consec = sum(teacher_consec.values()) / max(1, len(teacher_consec))
-                    fairness_bonus = max(0.0, (max_consecutive - min(max_consecutive, avg_consec))) * 5.0  # up to +10
-                    
-                    # Compute score
-                    optimization_score = utilization * 0.7 + coverage_bonus * 0.2 + fairness_bonus * 0.1 - (unmet_demand * 1.5)
-                    optimization_score = max(0.0, min(100.0, round(optimization_score, 1)))
-                    print(f"DEBUG: Optimization score computed: {optimization_score}")
-
-                    optimization = {
-                        'method': 'greedy-constraints+segment-pass',
-                        'utilization_percent': round(utilization, 1),
-                        'avg_coverage_ratio': round(avg_coverage, 2),
-                        'fairness_bonus': round(fairness_bonus, 1),
-                        'conflicts_resolved': existing_entries,
-                        'unmet_subject_periods': int(unmet_demand),
-                        'suggestions': [
-                            'Avoids teacher double-booking automatically',
-                            'Limits long continuous stretches for teachers',
-                            'Spreads subjects across week and segments based on credits'
-                        ]
-                    }
-                    
-                    # Create timetable suggestion for this combination
+                    # Create algorithmic timetable suggestion
                     try:
-                        suggestion = TimetableSuggestion.objects.create(
+                        suggestion = AlgorithmicTimetableSuggestion.objects.create(
                             generated_by=request.user,
                             course=course,
                             year=year,
                             section=section,
                             academic_year='2023-24',
                             semester=1,
+                            algorithm_type=algorithm_type,
+                            max_periods_per_day=config.periods_per_day,
+                            max_teacher_periods_per_day=config.max_teacher_periods_per_day,
+                            max_consecutive_periods=config.max_consecutive_periods,
+                            break_duration=config.break_duration,
                             suggestion_data={
-                                'optimization': optimization,
+                                'algorithm': algorithm_type,
+                                'config': {
+                                    'days_per_week': config.days_per_week,
+                                    'periods_per_day': config.periods_per_day,
+                                    'period_duration': config.period_duration,
+                                    'break_periods': config.break_periods,
+                                    'break_duration': config.break_duration
+                                },
                                 'generated_at': timezone.now().isoformat(),
-                                'grid': grid,
-                                'subjects': subject_list
+                                'grid': result['grid'],
+                                'subjects': result['subjects'],
+                                'execution_time': result['execution_time'],
+                                'constraint_violations': violations
                             },
-                            optimization_score=optimization_score,
+                            optimization_score=result['optimization_score'],
                             conflicts_resolved=existing_entries,
+                            constraint_violations=len(violations),
                             status='generated'
                         )
-                        print(f"DEBUG: Created suggestion with ID: {suggestion.id} for {course} Year {year} Section {section}")
+                        print(f"DEBUG: Created algorithmic suggestion with ID: {suggestion.id} for {course} Year {year} Section {section}")
                         generated_count += 1
                     except Exception as create_error:
-                        print(f"DEBUG: Error creating TimetableSuggestion for {course} Year {year} Section {section}: {create_error}")
-                        print(f"DEBUG: Full error details: {type(create_error).__name__}: {str(create_error)}")
+                        print(f"DEBUG: Error creating AlgorithmicTimetableSuggestion for {course} Year {year} Section {section}: {create_error}")
                         continue
                 
                 if generated_count > 0:
-                    messages.success(request, f'Generated {generated_count} timetable suggestions for {total_combinations} course/year/section combinations. Check the suggestions tab.')
+                    messages.success(request, f'Generated {generated_count} algorithmic timetable suggestions for {total_combinations} course/year/section combinations using {algorithm_type} algorithm.')
                 else:
-                    messages.warning(request, 'No timetable suggestions could be generated. Check if subjects and teachers are properly assigned.')
+                    messages.warning(request, 'No algorithmic timetable suggestions could be generated. Check if subjects and teachers are properly assigned.')
             except Exception as e:
-                print(f"DEBUG: Error in generate_ai_timetable: {e}")
-                messages.error(request, 'Failed to generate timetable suggestions.')
+                print(f"DEBUG: Error in generate_algorithmic_timetable: {e}")
+                messages.error(request, f'Failed to generate algorithmic timetable suggestions: {str(e)}')
         
         return redirect('accounts:manage_timetable')
     
@@ -741,10 +453,13 @@ def manage_timetable(request):
         'course', 'year', 'section', 'day_of_week', 'time_slot__period_number'
     )
     
-    # Get AI suggestions
-    ai_suggestions = TimetableSuggestion.objects.filter(
+    # Get algorithmic suggestions
+    algorithmic_suggestions = AlgorithmicTimetableSuggestion.objects.filter(
         status='generated'
     ).order_by('-created_at')[:5]
+    
+    # Get timetable configurations
+    timetable_configs = TimetableConfiguration.objects.filter(is_active=True)
     
     context = {
         'courses': courses,
@@ -753,7 +468,8 @@ def manage_timetable(request):
         'time_slots': time_slots,
         'rooms': rooms,
         'timetable_entries': timetable_entries,
-        'ai_suggestions': ai_suggestions,
+        'algorithmic_suggestions': algorithmic_suggestions,
+        'timetable_configs': timetable_configs,
         'days': [(i, day) for i, day in enumerate(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'])]
     }
     
@@ -993,3 +709,119 @@ def ai_analytics(request):
     }
     
     return render(request, 'admin/ai_analytics.html', context)
+
+@login_required
+@admin_required
+def manage_timetable_configs(request):
+    """Manage timetable configurations for algorithmic generation."""
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'create_config':
+            try:
+                name = request.POST.get('name')
+                description = request.POST.get('description', '')
+                days_per_week = int(request.POST.get('days_per_week', 5))
+                periods_per_day = int(request.POST.get('periods_per_day', 8))
+                period_duration = int(request.POST.get('period_duration', 50))
+                break_periods = request.POST.get('break_periods', '').split(',') if request.POST.get('break_periods') else []
+                break_duration = int(request.POST.get('break_duration', 15))
+                max_teacher_periods_per_day = int(request.POST.get('max_teacher_periods_per_day', 5))
+                max_consecutive_periods = int(request.POST.get('max_consecutive_periods', 2))
+                max_subject_periods_per_day = int(request.POST.get('max_subject_periods_per_day', 3))
+                algorithm_type = request.POST.get('algorithm_type', 'constraint_satisfaction')
+                max_iterations = int(request.POST.get('max_iterations', 1000))
+                timeout_seconds = int(request.POST.get('timeout_seconds', 30))
+                
+                # Convert break periods to integers
+                break_periods = [int(p.strip()) for p in break_periods if p.strip().isdigit()]
+                
+                config = TimetableConfiguration.objects.create(
+                    name=name,
+                    description=description,
+                    days_per_week=days_per_week,
+                    periods_per_day=periods_per_day,
+                    period_duration=period_duration,
+                    break_periods=break_periods,
+                    break_duration=break_duration,
+                    max_teacher_periods_per_day=max_teacher_periods_per_day,
+                    max_consecutive_periods=max_consecutive_periods,
+                    max_subject_periods_per_day=max_subject_periods_per_day,
+                    algorithm_type=algorithm_type,
+                    max_iterations=max_iterations,
+                    timeout_seconds=timeout_seconds,
+                    created_by=request.user
+                )
+                
+                messages.success(request, f'Timetable configuration "{name}" created successfully!')
+                return redirect('accounts:manage_timetable_configs')
+                
+            except Exception as e:
+                messages.error(request, f'Failed to create configuration: {str(e)}')
+        
+        elif action == 'update_config':
+            try:
+                config_id = int(request.POST.get('config_id'))
+                config = get_object_or_404(TimetableConfiguration, id=config_id)
+                
+                config.name = request.POST.get('name', config.name)
+                config.description = request.POST.get('description', config.description)
+                config.days_per_week = int(request.POST.get('days_per_week', config.days_per_week))
+                config.periods_per_day = int(request.POST.get('periods_per_day', config.periods_per_day))
+                config.period_duration = int(request.POST.get('period_duration', config.period_duration))
+                config.break_duration = int(request.POST.get('break_duration', config.break_duration))
+                config.max_teacher_periods_per_day = int(request.POST.get('max_teacher_periods_per_day', config.max_teacher_periods_per_day))
+                config.max_consecutive_periods = int(request.POST.get('max_consecutive_periods', config.max_consecutive_periods))
+                config.max_subject_periods_per_day = int(request.POST.get('max_subject_periods_per_day', config.max_subject_periods_per_day))
+                config.algorithm_type = request.POST.get('algorithm_type', config.algorithm_type)
+                config.max_iterations = int(request.POST.get('max_iterations', config.max_iterations))
+                config.timeout_seconds = int(request.POST.get('timeout_seconds', config.timeout_seconds))
+                
+                # Handle break periods
+                break_periods_str = request.POST.get('break_periods', '')
+                if break_periods_str:
+                    break_periods = [int(p.strip()) for p in break_periods_str.split(',') if p.strip().isdigit()]
+                    config.break_periods = break_periods
+                
+                config.save()
+                messages.success(request, f'Configuration "{config.name}" updated successfully!')
+                return redirect('accounts:manage_timetable_configs')
+                
+            except Exception as e:
+                messages.error(request, f'Failed to update configuration: {str(e)}')
+        
+        elif action == 'delete_config':
+            try:
+                config_id = int(request.POST.get('config_id'))
+                config = get_object_or_404(TimetableConfiguration, id=config_id)
+                config_name = config.name
+                config.delete()
+                messages.success(request, f'Configuration "{config_name}" deleted successfully!')
+                return redirect('accounts:manage_timetable_configs')
+                
+            except Exception as e:
+                messages.error(request, f'Failed to delete configuration: {str(e)}')
+        
+        elif action == 'toggle_config':
+            try:
+                config_id = int(request.POST.get('config_id'))
+                config = get_object_or_404(TimetableConfiguration, id=config_id)
+                config.is_active = not config.is_active
+                config.save()
+                status = 'activated' if config.is_active else 'deactivated'
+                messages.success(request, f'Configuration "{config.name}" {status} successfully!')
+                return redirect('accounts:manage_timetable_configs')
+                
+            except Exception as e:
+                messages.error(request, f'Failed to toggle configuration: {str(e)}')
+    
+    # Get all configurations
+    configs = TimetableConfiguration.objects.all().order_by('-created_at')
+    
+    context = {
+        'configs': configs,
+        'algorithm_choices': AlgorithmicTimetableSuggestion.ALGORITHM_CHOICES
+    }
+    
+    return render(request, 'admin/manage_timetable_configs.html', context)
