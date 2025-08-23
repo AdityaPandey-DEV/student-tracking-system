@@ -83,7 +83,7 @@ def admin_dashboard(request):
     # Course-wise student distribution with optimized query
     course_distribution = []
     courses_with_counts = Course.objects.filter(is_active=True).annotate(
-        student_count=Count('studentprofile', filter=Q(studentprofile__user__is_active=True))
+        student_count=Count('studentprofile__user', filter=Q(studentprofile__user__is_active=True))
     ).values('name', 'full_name', 'student_count').order_by('-student_count')
     
     for course_data in courses_with_counts:

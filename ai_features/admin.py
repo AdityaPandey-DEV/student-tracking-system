@@ -1,8 +1,8 @@
 from django.contrib import admin
 from .models import (
-    AIChat, ChatMessage, TimetableSuggestion, StudyRecommendation,
+    AIChat, ChatMessage, StudyRecommendation,
     PerformanceInsight, AIAnalyticsReport, SmartNotification,
-    StudyMaterial, Assignment
+    StudyMaterial, Assignment, AlgorithmicTimetableSuggestion, TimetableConfiguration
 )
 
 class ChatMessageInline(admin.TabularInline):
@@ -32,10 +32,10 @@ class ChatMessageAdmin(admin.ModelAdmin):
         return obj.message[:50] + ('...' if len(obj.message) > 50 else '')
     get_message_preview.short_description = 'Message Preview'
 
-@admin.register(TimetableSuggestion)
-class TimetableSuggestionAdmin(admin.ModelAdmin):
-    list_display = ('get_class_info', 'optimization_score', 'conflicts_resolved', 'status', 'generated_by', 'created_at')
-    list_filter = ('status', 'course', 'year', 'academic_year', 'semester', 'created_at')
+@admin.register(AlgorithmicTimetableSuggestion)
+class AlgorithmicTimetableSuggestionAdmin(admin.ModelAdmin):
+    list_display = ('get_class_info', 'algorithm_type', 'optimization_score', 'conflicts_resolved', 'status', 'generated_by', 'created_at')
+    list_filter = ('status', 'algorithm_type', 'course', 'year', 'academic_year', 'semester', 'created_at')
     search_fields = ('course', 'generated_by__username')
     ordering = ('-optimization_score', '-created_at')
     readonly_fields = ('created_at', 'updated_at')
@@ -43,6 +43,14 @@ class TimetableSuggestionAdmin(admin.ModelAdmin):
     def get_class_info(self, obj):
         return f"{obj.course} Y{obj.year}{obj.section}"
     get_class_info.short_description = 'Class'
+
+@admin.register(TimetableConfiguration)
+class TimetableConfigurationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'days_per_week', 'periods_per_day', 'period_duration', 'algorithm_type', 'is_active', 'created_by', 'created_at')
+    list_filter = ('is_active', 'algorithm_type', 'days_per_week', 'created_at')
+    search_fields = ('name', 'description', 'created_by__username')
+    ordering = ('name',)
+    readonly_fields = ('created_at', 'updated_at')
 
 @admin.register(StudyRecommendation)
 class StudyRecommendationAdmin(admin.ModelAdmin):
