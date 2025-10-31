@@ -301,46 +301,84 @@ class EmailOTP(models.Model):
 ### 4. Registration View (`accounts/views.py`)
 
 ```python
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.core.mail import send_mail
-from django.conf import settings
-from .models import User, StudentProfile, EmailOTP
+from django.http import JsonResponse
+from django.db import transaction
+from django.utils import timezone
+import json
+
+from .models import User, StudentProfile, AdminProfile, TeacherProfile, EmailOTP
+from utils.notifications import send_otp_notification
 ```
 
 **Hinglish Explanation:**
 - `render`: HTML template render karne ke liye
 - `redirect`: User ko different page pe redirect karne ke liye
+- `get_object_or_404`: Object dhundo, nahi mila to 404 error
 - `login, authenticate, logout`: Django ke built-in authentication functions
+- `login_required`: Decorator - sirf logged-in users access kar sakein
 - `messages`: Flash messages show karne ke liye (success/error alerts)
-- `send_mail`: Email bhejne ke liye
-- `settings`: Django settings file se configuration lene ke liye
+- `JsonResponse`: JSON response return karne ke liye (AJAX requests)
+- `transaction`: Database transactions ko atomic banane ke liye
+- `send_otp_notification`: Custom utility function email bhejne ke liye
 - Models import kiye jo use honge
 
 ---
 
+**Real Implementation: Two-Step Registration Process**
+
 ```python
 def student_register(request):
-    """Student registration with email OTP verification."""
+    """Student registration view with 2-step OTP verification."""
     if request.method == 'POST':
-        # Form data extract karo
-        username = request.POST.get('username')
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-        first_name = request.POST.get('first_name')
-        last_name = request.POST.get('last_name')
-        roll_number = request.POST.get('roll_number')
-        course = request.POST.get('course')
-        year = request.POST.get('year')
-        section = request.POST.get('section')
+        step = request.POST.get('step', '1')
+        
+        if step == '1':
+            # Step 1: Basic info collect karo aur OTP bhejo
+            return handle_student_registration_step1(request)
+        elif step == '2':
+            # Step 2: OTP verify karo aur registration complete karo
+            return handle_student_registration_step2(request)
+    
+    return render(request, 'accounts/student_register.html')
 ```
 
 **Hinglish Explanation:**
-- `request.method == 'POST'`: Check karo ki form submit hua hai ya nahi
-- `request.POST.get()`: Form se data nikalo
-  - GET method safe hai - agar field nahi hai to None return karega (error nahi dega)
-- Saare required fields extract kar rahe hain registration ke liye
+- **Two-step process kyun?** Security aur better user experience ke liye
+- **Step 1**: User details collect karo → OTP bhejo → Wait for verification
+- **Step 2**: OTP verify karo → User create karo → Auto-login
+- `step` parameter se decide hota hai konsa step execute karna hai
+
+---
+
+### Step 1: Basic Info Collection & OTP Sending
+
+```python
+def handle_student_registration_step1(request):
+    """Step 1: Collect info and send Email OTP (FREE)."""
+    try:
+        # Form data extract karo
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        email = request.POST.get('email', '').strip().lower()
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password')
+        roll_number = request.POST.get('roll_number', '').strip().upper()
+        course = request.POST.get('course')
+        year = int(request.POST.get('year'))
+        section = request.POST.get('section', '').strip().upper()
+```
+
+**Hinglish Explanation:**
+- `request.POST.get('field', '')`: Field ki value nikalo, agar nahi hai to empty string
+- `.strip()`: Extra spaces remove karo (leading/trailing whitespace)
+- `.lower()`: Email ko lowercase mein convert karo (consistency ke liye)
+- `.upper()`: Roll number aur section ko uppercase mein (standard format)
+- `int()`: Year ko string se integer mein convert karo
+- **Error handling**: Try-except block mein wrap kiya hai safety ke liye
 
 ---
 
