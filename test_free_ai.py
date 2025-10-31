@@ -85,7 +85,7 @@ def test_simple_model():
         url = "https://api-inference.huggingface.co/models/gpt2"
         
         payload = {
-            "inputs": "The Enhanced Timetable System helps students by",
+            "inputs": "The Student Tracking System helps students by",
             "parameters": {
                 "max_length": 100,
                 "temperature": 0.7

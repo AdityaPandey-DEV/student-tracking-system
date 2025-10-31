@@ -125,7 +125,7 @@ def test_django_integration():
         return False
 
 if __name__ == "__main__":
-    print("🚀 Enhanced Timetable System - Offline AI Test")
+    print("🚀 Student Tracking System - Offline AI Test")
     print("=" * 50)
     
     results = []
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     
     if passed == total:
         print("🎉 All tests passed! Your offline AI system is working perfectly!")
-        print("\n💡 Your Enhanced Timetable System now has:")
+        print("\n💡 Your Student Tracking System now has:")
         print("   • Intelligent offline AI responses")
         print("   • No external API dependencies")
         print("   • Context-aware academic assistance")

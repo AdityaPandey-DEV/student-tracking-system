@@ -1,6 +1,6 @@
-# 🎓 Enhanced Timetable System
+# 🎓 Student Tracking System
 
-**AI-powered academic scheduling and management platform for educational institutions.**
+**AI-powered student tracking and management platform for educational institutions.**
 
 [![Deploy on Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
@@ -67,7 +67,7 @@
 ### 1. Clone Repository
 ```bash
 git clone https://github.com/AdityaPandey-DEV/Smart-Time-Table-Management-System.git
-cd Smart-Time-Table-Management-System
+cd student-tracking-system
 ```
 
 ### 2. Install Dependencies
@@ -119,7 +119,7 @@ Visit: http://127.0.0.1:8000
 ### Step 2: Generate App Password  
 1. Go to: https://myaccount.google.com/apppasswords
 2. Select "Mail" → "Other (Custom name)"
-3. Enter: "Enhanced Timetable System"
+3. Enter: "Student Tracking System"
 4. Copy the 16-character password (e.g., `abcdefghijklmnop`)
 
 ### Step 3: Update .env File
@@ -363,4 +363,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-*Enhanced Timetable System - Making education management easier! 🎓*
+*Student Tracking System - Making education management easier! 🎓*

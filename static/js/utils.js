@@ -1,5 +1,5 @@
 /**
- * Enhanced Utility Functions for Timetable System
+ * Enhanced Utility Functions for Student Tracking System
  * Common functions used across the application
  */
 

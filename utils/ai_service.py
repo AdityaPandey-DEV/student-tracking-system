@@ -1,5 +1,5 @@
 """
-AI Service integration for Enhanced Timetable System.
+AI Service integration for Student Tracking System.
 Handles OpenAI API calls for chat, recommendations, and analytics.
 """
 
@@ -223,7 +223,7 @@ class AIService:
     # Helper methods for building prompts
     def _build_system_prompt(self, context: Dict = None) -> str:
         """Build system prompt for chat."""
-        base_prompt = "You are an AI assistant for an Enhanced Timetable System. Help students with their academic queries, schedule questions, and study advice."
+        base_prompt = "You are an AI assistant for an Student Tracking System. Help students with their academic queries, schedule questions, and study advice."
         
         if context:
             if context.get('student_name'):

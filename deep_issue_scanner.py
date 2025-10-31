@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Deep Issue Scanner for Enhanced Timetable System
+Deep Issue Scanner for Student Tracking System
 Detects and reports potential issues across the entire codebase
 """
 import os
@@ -490,7 +490,7 @@ def main():
     """Run deep issue scan."""
     scanner = IssueScanner()
     
-    print("🚀 Enhanced Timetable System - Deep Issue Scanner")
+    print("🚀 Student Tracking System - Deep Issue Scanner")
     print("="*60)
     
     # Run all scans

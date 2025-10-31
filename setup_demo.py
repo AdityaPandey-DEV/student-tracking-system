@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Enhanced Timetable System - Demo Setup
+Student Tracking System - Demo Setup
 This script sets up a working demo environment with console-based OTP display.
 """
 
@@ -18,11 +18,11 @@ from django.core.management import call_command
 
 def setup_demo_environment():
     """Set up a working demo environment."""
-    print("🚀 Setting up Enhanced Timetable System Demo")
+    print("🚀 Setting up Student Tracking System Demo")
     print("=" * 60)
     
     # Configure for demo mode (console email backend)
-    env_content = """# Enhanced Timetable System - Demo Configuration
+    env_content = """# Student Tracking System - Demo Configuration
 DEBUG=True
 SECRET_KEY=demo-secret-key-for-testing-only-replace-in-production
 

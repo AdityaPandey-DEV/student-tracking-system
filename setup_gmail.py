@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Gmail Setup Wizard for Enhanced Timetable System
+Gmail Setup Wizard for Student Tracking System
 This script will guide you through setting up Gmail SMTP for real email sending.
 """
 
@@ -10,7 +10,7 @@ import webbrowser
 from pathlib import Path
 
 def print_header():
-    print("📧 Gmail Setup Wizard for Enhanced Timetable System")
+    print("📧 Gmail Setup Wizard for Student Tracking System")
     print("=" * 60)
     print("This wizard will help you set up real email sending with Gmail.")
     print("Follow the steps below to get your Gmail App Password.\n")
@@ -36,7 +36,7 @@ def show_gmail_setup_steps():
     print("2. Scroll down to 'App passwords'")
     print("3. Click 'App passwords'")
     print("4. Select 'Mail' and 'Other (Custom name)'")
-    print("5. Enter 'Enhanced Timetable System'")
+    print("5. Enter 'Student Tracking System'")
     print("6. Click 'Generate'")
     print("7. Copy the 16-character password (format: abcd efgh ijkl mnop)")
     
@@ -104,7 +104,7 @@ def test_email_setup():
         print("📤 Sending test email...")
         
         result = send_mail(
-            subject='Enhanced Timetable System - Email Test ✅',
+            subject='Student Tracking System - Email Test ✅',
             message='Congratulations! Your Gmail SMTP configuration is working correctly.',
             from_email=settings.EMAIL_HOST_USER,
             recipient_list=[settings.EMAIL_HOST_USER],  # Send to yourself

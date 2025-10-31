@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-System Connectivity Test for Enhanced Timetable System
+System Connectivity Test for Student Tracking System
 Tests all interconnections between models, views, and templates
 """
 import os
@@ -287,7 +287,7 @@ def test_static_files():
 
 def main():
     """Run all connectivity tests."""
-    print("🚀 Enhanced Timetable System - Connectivity Test")
+    print("🚀 Student Tracking System - Connectivity Test")
     print("=" * 50)
     
     tests = [

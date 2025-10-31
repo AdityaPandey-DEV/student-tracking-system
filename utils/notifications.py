@@ -66,9 +66,9 @@ def send_otp_sms(phone_number, otp_code, purpose='password_reset'):
         client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
         
         if purpose == 'password_reset':
-            message_body = f"Your Enhanced Timetable System password reset OTP is: {otp_code}. This code expires in 10 minutes."
+            message_body = f"Your Student Tracking System password reset OTP is: {otp_code}. This code expires in 10 minutes."
         else:
-            message_body = f"Your Enhanced Timetable System verification code is: {otp_code}. This code expires in 10 minutes."
+            message_body = f"Your Student Tracking System verification code is: {otp_code}. This code expires in 10 minutes."
         
         message = client.messages.create(
             body=message_body,
@@ -87,10 +87,10 @@ def send_otp_email(email, otp_code, purpose='password_reset'):
     """Send OTP via email."""
     try:
         if purpose == 'password_reset':
-            subject = "Enhanced Timetable System - Password Reset OTP"
+            subject = "Student Tracking System - Password Reset OTP"
             template = 'emails/password_reset_otp.html'
         else:
-            subject = "Enhanced Timetable System - Verification Code"
+            subject = "Student Tracking System - Verification Code"
             template = 'emails/verification_otp.html'
         
         context = {

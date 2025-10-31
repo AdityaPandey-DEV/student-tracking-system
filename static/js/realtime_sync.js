@@ -1,5 +1,5 @@
 /**
- * Real-time synchronization system for enhanced timetable system
+ * Real-time synchronization system for student tracking system
  * Provides automatic updates across admin, teacher, and student interfaces
  */
 

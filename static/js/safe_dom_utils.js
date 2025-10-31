@@ -1,5 +1,5 @@
 /**
- * Safe DOM Utilities for Enhanced Timetable System
+ * Safe DOM Utilities for student tracking system
  * Provides secure alternatives to innerHTML for XSS prevention
  */
 

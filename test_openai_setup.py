@@ -135,7 +135,7 @@ def show_next_steps():
     print("- Project Features: Check README.md")
 
 if __name__ == "__main__":
-    print("🤖 Enhanced Timetable System - API Setup Test")
+    print("🤖 Student Tracking System - API Setup Test")
     print("=" * 60)
     
     # Test OpenAI first

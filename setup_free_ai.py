@@ -164,7 +164,7 @@ def show_usage_instructions():
     """Show how to use the free AI in the project"""
     print("\n📚 How to use FREE AI in your project:")
     print("-" * 50)
-    print("Your Enhanced Timetable System will now use:")
+    print("Your Student Tracking System will now use:")
     print("• Hugging Face instead of OpenAI")
     print("• Completely FREE (no credit card needed)")
     print("• Works great for chatbots and recommendations")
@@ -178,7 +178,7 @@ def show_usage_instructions():
     print("   but using free Hugging Face models instead!")
 
 def main():
-    print("🆓 Enhanced Timetable System - FREE AI Setup")
+    print("🆓 Student Tracking System - FREE AI Setup")
     print("=" * 60)
     print("Your OpenAI credits are exhausted, but no worries!")
     print("Let's set up completely FREE AI using Hugging Face!")

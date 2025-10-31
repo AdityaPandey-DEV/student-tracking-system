@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Quick email test script for Enhanced Timetable System
+Quick email test script for Student Tracking System
 Run this after setting up Gmail App Password to test email functionality
 """
 import os
@@ -67,7 +67,7 @@ def test_email():
         
         # Send test email
         print("\n📤 Sending test email...")
-        subject = "Enhanced Timetable System - Email Test"
+        subject = "Student Tracking System - Email Test"
         message = "This is a test email to verify SMTP configuration is working correctly!"
         from_email = settings.EMAIL_HOST_USER
         to_email = [settings.EMAIL_HOST_USER]  # Send to yourself
@@ -142,7 +142,7 @@ def test_otp_generation():
         return False
 
 if __name__ == "__main__":
-    print("🚀 Enhanced Timetable System - Email Configuration Test")
+    print("🚀 Student Tracking System - Email Configuration Test")
     print("=" * 60)
     
     # Check environment setup

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Quick Setup Script for Enhanced Timetable System
+Quick Setup Script for Student Tracking System
 This script helps you set up OpenAI API key step by step
 """
 
@@ -9,7 +9,7 @@ import webbrowser
 from time import sleep
 
 def print_header():
-    print("🚀 Enhanced Timetable System - Quick Setup")
+    print("🚀 Student Tracking System - Quick Setup")
     print("=" * 60)
     print("This script will help you set up your OpenAI API key step by step")
     print()
@@ -103,7 +103,7 @@ def show_final_instructions():
     """Show final instructions"""
     print("\n🎉 Setup Complete!")
     print("-" * 30)
-    print("Your Enhanced Timetable System is now ready!")
+    print("Your Student Tracking System is now ready!")
     print()
     print("🚀 Next Steps:")
     print("1. Start the server: python manage.py runserver")

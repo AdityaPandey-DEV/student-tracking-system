@@ -60,7 +60,7 @@ def update_gmail_password():
         from django.conf import settings
         
         result = send_mail(
-            subject='Enhanced Timetable System - Test Email ✅',
+            subject='Student Tracking System - Test Email ✅',
             message='Your Gmail configuration is working! You can now send real OTP emails.',
             from_email=settings.EMAIL_HOST_USER,
             recipient_list=[settings.EMAIL_HOST_USER],
@@ -94,7 +94,7 @@ def update_gmail_password():
         return False
 
 if __name__ == "__main__":
-    print("📧 Gmail Setup for Enhanced Timetable System")
+    print("📧 Gmail Setup for Student Tracking System")
     print("Follow these steps:")
     print("1. Go to: https://myaccount.google.com/security")
     print("2. Enable 2-Factor Authentication (if not done)")

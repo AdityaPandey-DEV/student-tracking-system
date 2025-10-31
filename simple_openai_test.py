@@ -54,6 +54,6 @@ if __name__ == "__main__":
     
     if success:
         print("\n🎉 OpenAI API is working perfectly!")
-        print("Your Enhanced Timetable System is ready for AI features!")
+        print("Your Student Tracking System is ready for AI features!")
     else:
         print("\n❌ API test failed. Check your API key.")

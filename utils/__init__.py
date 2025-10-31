@@ -1,1 +1,1 @@
-# Utils package for enhanced timetable system
+# Utils package for student tracking system

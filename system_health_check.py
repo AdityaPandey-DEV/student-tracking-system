@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Comprehensive System Health Check
-Verify all components of the Enhanced Timetable System are working correctly.
+Verify all components of the Student Tracking System are working correctly.
 """
 
 import os
@@ -231,7 +231,7 @@ def run_management_commands():
 
 def main():
     """Run comprehensive system health check."""
-    print("🚀 Enhanced Timetable System - Health Check")
+    print("🚀 Student Tracking System - Health Check")
     print("=" * 50)
     
     checks = [

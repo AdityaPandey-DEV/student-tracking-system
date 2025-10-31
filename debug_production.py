@@ -65,7 +65,7 @@ def test_email_sending():
             return False
             
         result = send_mail(
-            subject='Enhanced Timetable System - Production Test',
+            subject='Student Tracking System - Production Test',
             message='This is a test from your production deployment on Render.',
             from_email=settings.EMAIL_HOST_USER,
             recipient_list=[settings.EMAIL_HOST_USER],
@@ -181,7 +181,7 @@ def check_environment():
 
 def main():
     """Run all diagnostic tests."""
-    print("🚀 Enhanced Timetable System - Production Diagnostics")
+    print("🚀 Student Tracking System - Production Diagnostics")
     print("=" * 60)
     
     tests = [
