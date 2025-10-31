@@ -383,68 +383,87 @@ def handle_student_registration_step1(request):
 ---
 
 ```python
-        # Check if user already exists
-        if User.objects.filter(username=username).exists():
-            messages.error(request, 'Username already taken!')
-            return redirect('student_register')
+        # Validation 1: Required fields check
+        if not all([first_name, last_name, email, username, password, 
+                   roll_number, course, year, section]):
+            return JsonResponse({
+                'success': False,
+                'message': 'All fields are required!'
+            })
         
+        # Validation 2: Username already exists check
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({
+                'success': False,
+                'message': 'Username already taken! Please choose another.'
+            })
+        
+        # Validation 3: Email already registered check
         if User.objects.filter(email=email).exists():
-            messages.error(request, 'Email already registered!')
-            return redirect('student_register')
+            return JsonResponse({
+                'success': False,
+                'message': 'Email already registered! Try logging in.'
+            })
+        
+        # Validation 4: Roll number already exists check
+        if StudentProfile.objects.filter(roll_number=roll_number).exists():
+            return JsonResponse({
+                'success': False,
+                'message': 'Roll number already exists!'
+            })
 ```
 
 **Hinglish Explanation:**
-- **Validation 1**: Username check karo
+- **Validation 1**: `all()` function check karta hai ki saare fields filled hain ya nahi
+  - Agar koi bhi field empty hai to False return
+  - Early return se unnecessary database queries avoid hoti hain
+- **Validation 2**: Username uniqueness check
   - `.filter(username=username)` - is username wala user dhundo
-  - `.exists()` - agar mil gaya to True, nahi to False
-  - Agar mil gaya: Error message show karo aur wapas registration page pe bhej do
-- **Validation 2**: Email check karo (same process)
-- Ye duplicate entries prevent karta hai
+  - `.exists()` - agar mil gaya to True, nahi to False (efficient query)
+  - Agar mil gaya: JSON response return karo with error
+- **Validation 3**: Email duplication check (same logic)
+- **Validation 4**: Roll number unique hona chahiye ek course/year/section mein
+- **JsonResponse kyun?**: AJAX request hai to JSON response better hai (page reload nahi hoga)
 
 ---
 
 ```python
-        # Generate OTP
+        # Generate OTP for email verification
         otp_code = EmailOTP.generate_otp(email, purpose='registration')
         
-        # Send OTP via email
-        subject = 'Student Registration - Email Verification OTP'
-        message = f'''
-        Hello {first_name},
-        
-        Your OTP for student registration is: {otp_code}
-        
-        This OTP will expire in 15 minutes.
-        
-        If you didn't request this, please ignore this email.
-        
-        Thanks,
-        Student Tracking System
-        '''
-        
-        send_mail(
-            subject,
-            message,
-            settings.EMAIL_HOST_USER,
-            [email],
-            fail_silently=False,
+        # Send OTP via email using utility function
+        email_sent = send_otp_notification(
+            email=email,
+            otp_code=otp_code,
+            purpose='registration',
+            user_name=first_name
         )
+        
+        if not email_sent:
+            return JsonResponse({
+                'success': False,
+                'message': 'Failed to send OTP email. Please try again.'
+            })
 ```
 
 **Hinglish Explanation:**
-- `EmailOTP.generate_otp()`: Humara custom method call kiya - 6 digit OTP generate hoga
-- **Email Setup**:
-  - `subject`: Email ka heading
-  - `message`: Email ka content - f-string use karke dynamic values dal rahe hain
-  - `settings.EMAIL_HOST_USER`: Settings se sender email address
-  - `[email]`: Recipient ka email (list mein dena hota hai)
-  - `fail_silently=False`: Agar email fail ho to error throw kare (debugging ke liye)
+- `EmailOTP.generate_otp()`: Humara custom method - 6 digit OTP generate karega
+  - Purane unused OTPs ko invalid kar dega
+  - Naya OTP database mein save karega
+  - OTP code return karega
+- **`send_otp_notification()`**: Custom utility function (utils/notifications.py mein hai)
+  - Email formatting handle karta hai
+  - HTML template use karta hai (professional look)
+  - Error handling include hai
+  - True/False return karta hai (success/failure)
+- **Error handling**: Agar email send fail ho jaye to user ko inform karo
+- **Why separate function?**: Code reusability - same function registration, password reset, etc. mein use hoga
 
 ---
 
 ```python
-        # Store data in session for OTP verification
-        request.session['registration_data'] = {
+        # Store registration data in session (temporary storage)
+        request.session['student_registration_data'] = {
             'username': username,
             'email': email,
             'password': password,
@@ -454,107 +473,234 @@ def handle_student_registration_step1(request):
             'course': course,
             'year': year,
             'section': section,
-            'user_type': 'student'
+            'user_type': 'student',
+            'timestamp': timezone.now().isoformat()  # Track when data was stored
         }
         
-        messages.success(request, f'OTP sent to {email}. Please verify.')
-        return redirect('verify_otp')
+        # Save session immediately
+        request.session.modified = True
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'OTP sent to {email}. Please check your email.',
+            'email': email
+        })
+    
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Registration error: {str(e)}'
+        })
 ```
 
 **Hinglish Explanation:**
-- **Session Storage**: Form ka saara data session mein temporarily store kar diya
+- **Session Storage**: Form ka saara data session mein temporarily store kiya
   - Kyunki OTP verification ke baad hi user create karenge
-  - Session server-side storage hai - user ke browser mein cookie mein sirf session ID save hoti hai
-- Success message show karo
-- OTP verification page pe redirect karo
+  - Session server-side storage hai - secure hai
+  - Browser mein sirf session ID cookie ke form mein save hoti hai
+- **`timestamp`**: Kab store hua ye track karne ke liye (session timeout check mein useful)
+- **`request.session.modified = True`**: Django ko force karo ki session ko save kare
+  - Sometimes Django automatically detect nahi karta ki nested dictionary update hui hai
+- **JSON Response**: AJAX request ko response bheja
+  - Frontend pe JavaScript handle karega next step
+- **Exception handling**: Koi bhi unexpected error ko catch karo aur user-friendly message show karo
 
 ---
 
-```python
-    # GET request - show registration form
-    return render(request, 'accounts/student_register.html')
-```
-
-**Hinglish Explanation:**
-- Agar POST request nahi hai (matlab page pehli baar load ho raha hai)
-- To blank registration form show karo
-
----
-
-### 5. OTP Verification View
+### Step 2: OTP Verification & User Creation
 
 ```python
-def verify_otp(request):
-    """Verify email OTP and create user account."""
-    if request.method == 'POST':
-        email = request.session.get('registration_data', {}).get('email')
-        otp_code = request.POST.get('otp_code')
+def handle_student_registration_step2(request):
+    """Step 2: Verify OTP and create user account."""
+    try:
+        # Get OTP code from form
+        otp_code = request.POST.get('otp_code', '').strip()
+        
+        # Get registration data from session
+        registration_data = request.session.get('student_registration_data')
+        
+        if not registration_data:
+            return JsonResponse({
+                'success': False,
+                'message': 'Session expired. Please start registration again.'
+            })
+        
+        email = registration_data['email']
         
         # Verify OTP
-        if EmailOTP.verify_otp(email, otp_code, purpose='registration'):
-            # OTP correct hai - user create karo
-            registration_data = request.session.get('registration_data')
-            
-            # Create User
+        if not EmailOTP.verify_otp(email, otp_code, purpose='registration'):
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid or expired OTP. Please try again.'
+            })
+```
+
+**Hinglish Explanation:**
+- **Step 2 ka purpose**: OTP verify karna aur user account create karna
+- Form se user ka entered OTP nikalo
+- Session se pehle store kiya hua registration data nikalo
+- **Session check**: Agar data nahi mila (session expire ho gaya):
+  - Error return karo
+  - User ko dobara registration start karna padega
+- **OTP Verification**: `EmailOTP.verify_otp()` call karo
+  - Ye method database se OTP match karega
+  - Check karega ki expired to nahi
+  - Check karega ki pehle use to nahi ho gaya
+  - True/False return karega
+
+---
+
+```python
+        # OTP verified successfully - Create user with transaction
+        with transaction.atomic():
+            # Create User account
             user = User.objects.create_user(
                 username=registration_data['username'],
                 email=registration_data['email'],
                 password=registration_data['password'],
                 first_name=registration_data['first_name'],
                 last_name=registration_data['last_name'],
-                user_type=registration_data['user_type']
+                user_type='student',
+                is_verified=True
             )
-```
-
-**Hinglish Explanation:**
-- Session se email nikalo
-- Form se user ka entered OTP nikalo
-- `EmailOTP.verify_otp()` call karo - ye True/False return karega
-- **Agar OTP correct hai**:
-  - Session se pura registration data nikalo
-  - `create_user()` method use karo (ye password ko automatically hash kar deta hai)
-  - User object create ho gaya
-
----
-
-```python
+            
             # Create StudentProfile
             StudentProfile.objects.create(
                 user=user,
                 roll_number=registration_data['roll_number'],
                 course=registration_data['course'],
-                year=int(registration_data['year']),
+                year=registration_data['year'],
                 section=registration_data['section']
             )
-            
-            # Login user automatically
-            login(request, user)
-            
-            # Clear session data
-            del request.session['registration_data']
-            
-            messages.success(request, 'Registration successful!')
-            return redirect('student_dashboard')
         
-        else:
-            messages.error(request, 'Invalid or expired OTP!')
-            return redirect('verify_otp')
+        # Auto-login the user
+        login(request, user)
+        
+        # Clear session data (cleanup)
+        del request.session['student_registration_data']
+        request.session.modified = True
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Registration successful! Redirecting to dashboard...',
+            'redirect_url': '/student/dashboard/'
+        })
+    
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Registration failed: {str(e)}'
+        })
 ```
 
 **Hinglish Explanation:**
-- **StudentProfile create karo**:
-  - User object pass karo (one-to-one relationship)
-  - Baaki student-specific fields bhi bharo
-  - `.create()` automatically save bhi kar deta hai
+- **`transaction.atomic()`**: Database transaction mein wrap kiya
+  - Agar User create ho gaya but StudentProfile create fail ho jaye:
+    - Pura transaction rollback ho jayega
+    - Database inconsistent state mein nahi rahega
+  - **ACID properties** maintain hoti hain
+- **User Creation**:
+  - `create_user()` method password ko automatically hash kar deta hai
+  - `is_verified=True` set kiya kyunki email already verify ho gaya
+- **StudentProfile Creation**:
+  - user object pass kiya (OneToOne relationship)
+  - Student-specific fields bhi add kiye
 - **Auto-login**:
-  - Django ka `login()` function use karke user ko automatically login kar do
-  - User ko phir se login karne ki zarurat nahi padegi
-- **Session cleanup**:
-  - `del request.session['registration_data']` - session data delete kar do (ab zarurat nahi)
-- **Redirect**: Student dashboard pe bhej do
-- **Agar OTP wrong**:
-  - Error message show karo
-  - OTP verification page pe wapas bhej do
+  - Django ka `login()` function use karke user ko login kar diya
+  - Session create ho gaya
+  - User ko manually login karne ki zarurat nahi
+- **Session Cleanup**:
+  - Registration data delete kar diya
+  - Memory aur security ke liye important
+- **JSON Response**: Frontend ko success response with redirect URL
+
+---
+
+```python
+# GET request handler
+def student_register(request):
+    """Show blank registration form for GET requests."""
+    return render(request, 'accounts/student_register.html')
+```
+
+**Hinglish Explanation:**
+- Agar POST request nahi hai (matlab page pehli baar load ho raha hai)
+- To blank registration form show karo
+- User form fill karega aur submit karega (Step 1 trigger hoga)
+
+---
+
+### 5. Complete Registration Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    REGISTRATION FLOW                             │
+└─────────────────────────────────────────────────────────────────┘
+
+USER                    FRONTEND                 BACKEND               DATABASE
+ │                         │                        │                    │
+ │  1. Opens /register     │                        │                    │
+ │─────────────────────────>                        │                    │
+ │                         │   GET request          │                    │
+ │                         │───────────────────────>│                    │
+ │                         │   Blank form HTML      │                    │
+ │                         │<───────────────────────│                    │
+ │                         │                        │                    │
+ │  2. Fills form & submits│                        │                    │
+ │─────────────────────────>                        │                    │
+ │                         │   POST (step=1)        │                    │
+ │                         │───────────────────────>│                    │
+ │                         │                        │ Check duplicates   │
+ │                         │                        │───────────────────>│
+ │                         │                        │ No duplicates      │
+ │                         │                        │<───────────────────│
+ │                         │                        │                    │
+ │                         │                        │ Generate OTP       │
+ │                         │                        │───────────────────>│
+ │                         │                        │ OTP saved          │
+ │                         │                        │<───────────────────│
+ │                         │                        │                    │
+ │                         │                        │ Send email         │
+ │                         │                        │────────────────>   │
+ │  3. OTP email received  │                        │                    │
+ │<────────────────────────────────────────────────────────────────────  │
+ │                         │   JSON success         │                    │
+ │                         │<───────────────────────│                    │
+ │  4. Shows OTP input     │                        │                    │
+ │<─────────────────────────                        │                    │
+ │                         │                        │                    │
+ │  5. Enters OTP & submits│                        │                    │
+ │─────────────────────────>                        │                    │
+ │                         │   POST (step=2)        │                    │
+ │                         │───────────────────────>│                    │
+ │                         │                        │ Verify OTP         │
+ │                         │                        │───────────────────>│
+ │                         │                        │ OTP valid ✓        │
+ │                         │                        │<───────────────────│
+ │                         │                        │                    │
+ │                         │                        │ Create User        │
+ │                         │                        │───────────────────>│
+ │                         │                        │ User created       │
+ │                         │                        │<───────────────────│
+ │                         │                        │                    │
+ │                         │                        │ Create Profile     │
+ │                         │                        │───────────────────>│
+ │                         │                        │ Profile created    │
+ │                         │                        │<───────────────────│
+ │                         │   Success + redirect   │                    │
+ │                         │<───────────────────────│                    │
+ │  6. Redirect to dashboard                        │                    │
+ │<─────────────────────────                        │                    │
+ │                         │                        │                    │
+ └─────────────────────────┴────────────────────────┴────────────────────┘
+```
+
+**Key Points:**
+1. **Two-step process** - Data collection + OTP verification
+2. **Session storage** - Temporary data storage between steps
+3. **Email-based** - FREE verification (no SMS cost)
+4. **Transaction-safe** - Atomic database operations
+5. **Auto-login** - Seamless user experience
 
 ---
 
