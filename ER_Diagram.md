@@ -8,7 +8,7 @@
 
 ---
 
-##  Visual ER Diagram
+## 📊 Visual ER Diagram
 
 ```mermaid
 erDiagram
