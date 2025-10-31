@@ -3,8 +3,391 @@
 
 ## Database Overview
 - **Current Database**: SQLite3 (Development) / PostgreSQL (Production)
-- **Total Entities**: 25
+- **Total Entities**: 26
 - **Relationship Types**: OneToOne, OneToMany, ManyToMany
+
+---
+
+## 📊 Visual ER Diagram
+
+```mermaid
+erDiagram
+    USER ||--o| STUDENT_PROFILE : "has"
+    USER ||--o| TEACHER_PROFILE : "has"
+    USER ||--o| ADMIN_PROFILE : "has"
+    USER ||--o{ AI_CHAT : "creates"
+    USER ||--o{ ANNOUNCEMENT : "posts"
+    USER ||--o{ ALGORITHMIC_TIMETABLE_SUGGESTION : "generates"
+    USER ||--o{ TIMETABLE_CONFIGURATION : "creates"
+    USER ||--o{ AI_ANALYTICS_REPORT : "generates"
+    USER ||--o{ SMART_NOTIFICATION : "receives"
+    USER ||--o{ STUDY_MATERIAL : "uploads"
+    USER ||--o{ ASSIGNMENT : "creates"
+    
+    TEACHER_PROFILE ||--|| TEACHER : "links"
+    
+    COURSE ||--|{ SUBJECT : "offers"
+    
+    SUBJECT ||--|{ TIMETABLE_ENTRY : "scheduled_in"
+    SUBJECT ||--|{ ENROLLMENT : "enrolled_by"
+    SUBJECT ||--|{ STUDY_MATERIAL : "contains"
+    SUBJECT ||--|{ ASSIGNMENT : "contains"
+    SUBJECT }o--o{ STUDY_RECOMMENDATION : "targets"
+    
+    TEACHER ||--|{ TIMETABLE_ENTRY : "teaches"
+    TEACHER }o--o{ SUBJECT : "teaches_via"
+    
+    TEACHER }|--|{ TEACHER_SUBJECT : "through"
+    SUBJECT }|--|{ TEACHER_SUBJECT : "through"
+    
+    TIME_SLOT ||--|{ TIMETABLE_ENTRY : "defines"
+    ROOM ||--|{ TIMETABLE_ENTRY : "hosts"
+    
+    TIMETABLE_ENTRY ||--|{ ATTENDANCE : "tracks"
+    
+    STUDENT_PROFILE ||--|{ ENROLLMENT : "enrolls"
+    STUDENT_PROFILE ||--|{ ATTENDANCE : "records"
+    STUDENT_PROFILE ||--|{ STUDY_RECOMMENDATION : "receives"
+    STUDENT_PROFILE ||--|{ PERFORMANCE_INSIGHT : "generates"
+    
+    AI_CHAT ||--|{ CHAT_MESSAGE : "contains"
+    
+    USER {
+        int id PK
+        string username UK
+        string email UK
+        string password
+        string first_name
+        string last_name
+        string user_type "student|teacher|admin"
+        string phone_number
+        boolean is_verified
+        boolean is_staff
+        boolean is_superuser
+        datetime created_at
+        datetime updated_at
+    }
+    
+    STUDENT_PROFILE {
+        int user_id PK,FK
+        string roll_number UK
+        string course "B.Tech|BCA|B.Sc|MCA|M.Tech|MBA"
+        int year "1-4"
+        string section
+    }
+    
+    TEACHER_PROFILE {
+        int user_id PK,FK
+        int teacher_id FK
+        string employee_id UK
+        string department
+        string designation
+        text specialization
+        boolean is_active
+    }
+    
+    ADMIN_PROFILE {
+        int user_id PK,FK
+        string admin_id UK
+        string department
+        string designation
+    }
+    
+    COURSE {
+        int id PK
+        string name UK
+        string full_name
+        int duration_years
+        text description
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+    
+    SUBJECT {
+        int id PK
+        string code UK
+        string name
+        int course_id FK
+        int year "1-4"
+        int semester "1-8"
+        int credits
+        text description
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+    
+    TEACHER {
+        int id PK
+        string employee_id UK
+        string name
+        string email UK
+        string phone_number
+        string department
+        string designation
+        string specialization
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+    
+    TEACHER_SUBJECT {
+        int id PK
+        int teacher_id FK
+        int subject_id FK
+        datetime assigned_at
+        boolean is_active
+    }
+    
+    TIME_SLOT {
+        int id PK
+        int period_number UK
+        time start_time
+        time end_time
+        boolean is_break
+        int break_duration
+        boolean is_active
+    }
+    
+    ROOM {
+        int id PK
+        string room_number UK
+        string room_name
+        string room_type "classroom|lab|auditorium|seminar"
+        int capacity
+        string floor
+        string building
+        text facilities
+        boolean is_active
+    }
+    
+    TIMETABLE_ENTRY {
+        int id PK
+        int subject_id FK
+        int teacher_id FK
+        string course
+        int year "1-4"
+        string section
+        int day_of_week "0-5"
+        int time_slot_id FK
+        int room_id FK
+        string academic_year
+        int semester "1-8"
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+    
+    ENROLLMENT {
+        int id PK
+        int student_id FK
+        int subject_id FK
+        string academic_year
+        int semester "1-8"
+        datetime enrolled_at
+        boolean is_active
+    }
+    
+    ATTENDANCE {
+        int id PK
+        int student_id FK
+        int timetable_entry_id FK
+        date date
+        string status "present|absent|late|excused"
+        datetime marked_at
+        int marked_by_id FK
+        text notes
+    }
+    
+    ANNOUNCEMENT {
+        int id PK
+        string title
+        text content
+        int posted_by_id FK
+        string target_audience "all|course|year|section"
+        string target_course
+        int target_year
+        string target_section
+        boolean is_active
+        boolean is_urgent
+        datetime created_at
+        datetime updated_at
+    }
+    
+    EMAIL_OTP {
+        int id PK
+        string email
+        string otp_code
+        string purpose
+        boolean is_used
+        datetime expires_at
+        datetime created_at
+    }
+    
+    AI_CHAT {
+        int id PK
+        int user_id FK
+        string chat_type
+        string session_id
+        datetime created_at
+        datetime updated_at
+    }
+    
+    CHAT_MESSAGE {
+        int id PK
+        int chat_id FK
+        string sender "user|ai"
+        text message
+        json context_data
+        datetime timestamp
+    }
+    
+    ALGORITHMIC_TIMETABLE_SUGGESTION {
+        int id PK
+        int generated_by_id FK
+        string course
+        int year
+        string section
+        string academic_year
+        int semester
+        string algorithm_type
+        json suggestion_data
+        float optimization_score
+        int conflicts_resolved
+        int constraint_violations
+        string status
+        int reviewed_by_id FK
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+    
+    TIMETABLE_CONFIGURATION {
+        int id PK
+        string name UK
+        text description
+        int days_per_week
+        int periods_per_day
+        int period_duration
+        json break_periods
+        int break_duration
+        string algorithm_type
+        boolean is_active
+        int created_by_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    
+    STUDY_RECOMMENDATION {
+        int id PK
+        int student_id FK
+        string recommendation_type
+        string title
+        text description
+        string priority
+        float confidence_score
+        boolean is_read
+        boolean is_implemented
+        json generated_data
+        datetime expires_at
+        datetime created_at
+    }
+    
+    PERFORMANCE_INSIGHT {
+        int id PK
+        int student_id FK
+        string title
+        string insight_type
+        string scope
+        text description
+        string course
+        int year
+        string section
+        json insight_data
+        float confidence_score
+        float impact_score
+        text recommendations
+        int generated_by_id FK
+        boolean is_actionable
+        boolean is_viewed
+        datetime created_at
+        datetime updated_at
+    }
+    
+    AI_ANALYTICS_REPORT {
+        int id PK
+        string report_type
+        string title
+        string period
+        date start_date
+        date end_date
+        string course_filter
+        int year_filter
+        string section_filter
+        json report_data
+        text summary
+        json key_insights
+        text recommendations
+        int generated_by_id FK
+        boolean is_published
+        int views_count
+        datetime created_at
+        datetime updated_at
+    }
+    
+    SMART_NOTIFICATION {
+        int id PK
+        int recipient_id FK
+        string notification_type
+        string title
+        text message
+        string priority
+        json ai_context
+        float confidence_score
+        boolean is_read
+        boolean is_dismissed
+        datetime read_at
+        datetime scheduled_for
+        datetime expires_at
+        datetime created_at
+    }
+    
+    STUDY_MATERIAL {
+        int id PK
+        string title
+        text description
+        int subject_id FK
+        string course
+        int year
+        string section
+        string material_type
+        text content
+        string file_url
+        int uploaded_by_id FK
+        boolean is_published
+        datetime created_at
+        datetime updated_at
+    }
+    
+    ASSIGNMENT {
+        int id PK
+        string title
+        text description
+        int subject_id FK
+        string course
+        int year
+        string section
+        datetime due_date
+        int max_marks
+        text instructions
+        int created_by_id FK
+        boolean is_published
+        string status
+        datetime created_at
+        datetime updated_at
+    }
+```
 
 ---
 
