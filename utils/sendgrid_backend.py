@@ -64,13 +64,46 @@ class SendGridBackend(BaseEmailBackend):
                 # Get from email
                 from_email = message.from_email or getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@example.com')
                 
+                # Extract HTML and plain text content from Django EmailMessage
+                html_content = None
+                plain_text_content = message.body
+                
+                # Check if message has HTML alternatives
+                if hasattr(message, 'alternatives') and message.alternatives:
+                    for content, mimetype in message.alternatives:
+                        if mimetype == 'text/html':
+                            html_content = content
+                            break
+                    # If no HTML found in alternatives, check if body is HTML
+                    if not html_content:
+                        # Try to detect if body is HTML
+                        if '<html' in message.body.lower() or '<body' in message.body.lower():
+                            html_content = message.body
+                        else:
+                            # Use body as plain text if no HTML detected
+                            plain_text_content = message.body
+                else:
+                    # Check if body is HTML
+                    if '<html' in message.body.lower() or '<body' in message.body.lower():
+                        html_content = message.body
+                        plain_text_content = None  # Will extract text from HTML if needed
+                    else:
+                        plain_text_content = message.body
+                
+                # Log email details for debugging
+                logger.info(f"📧 Sending email via SendGrid API:")
+                logger.info(f"   From: {from_email}")
+                logger.info(f"   To: {message.to}")
+                logger.info(f"   Subject: {message.subject}")
+                logger.info(f"   Has HTML: {html_content is not None}")
+                
                 # Build SendGrid Mail object
                 mail = Mail(
                     from_email=from_email,
                     to_emails=message.to,
                     subject=message.subject,
-                    html_content=message.body if hasattr(message, 'alternatives') and message.alternatives else message.body,
-                    plain_text_content=message.body
+                    html_content=html_content or plain_text_content,
+                    plain_text_content=plain_text_content if plain_text_content else "Please enable HTML to view this email."
                 )
                 
                 # Add CC and BCC if present
@@ -89,10 +122,12 @@ class SendGridBackend(BaseEmailBackend):
                 # Check response status
                 if response.status_code in [200, 201, 202]:
                     logger.info(f"✅ Email sent successfully via SendGrid API to {message.to}")
+                    logger.info(f"   SendGrid response: {response.status_code} - {response.body}")
                     num_sent += 1
                 else:
                     error_msg = f"SendGrid API returned status {response.status_code}: {response.body}"
                     logger.error(f"❌ Failed to send email: {error_msg}")
+                    logger.error(f"   From: {from_email}, To: {message.to}")
                     if not self.fail_silently:
                         raise Exception(error_msg)
                         
