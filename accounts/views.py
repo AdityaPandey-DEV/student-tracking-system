@@ -155,7 +155,8 @@ def handle_student_registration_step1(request):
             return render(request, 'accounts/student_register.html', {
                 'step': 2,
                 'email': email,
-                'show_otp': bool(error_message)  # Show OTP in template if email failed
+                'show_otp': bool(error_message),  # Show OTP in template if email failed
+                'otp_code': otp_code if error_message else None  # Pass OTP code to template
             })
         else:
             messages.error(request, f'Failed to send OTP email: {error_message if error_message else "Unknown error"}. Please try again or contact support.')
@@ -488,7 +489,8 @@ def handle_teacher_registration_step1(request):
             return render(request, 'accounts/teacher_register.html', {
                 'step': 2,
                 'email': email,
-                'show_otp': bool(error_message)
+                'show_otp': bool(error_message),
+                'otp_code': otp_code if error_message else None
             })
         else:
             messages.error(request, f'Failed to send OTP email: {error_message if error_message else "Unknown error"}. Please try again or contact support.')

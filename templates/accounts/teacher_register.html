@@ -216,9 +216,23 @@
                             We've sent a 6-digit verification code to<br>
                             <strong>{{ email }}</strong>
                         </p>
+                        {% if show_otp and otp_code %}
+                        <!-- OTP Display when email fails -->
+                        <div class="alert alert-warning mt-2" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Email delivery failed!</strong> Your OTP code is:
+                            <div class="mt-2">
+                                <div class="otp-display-box" style="display: inline-block; background: #fff; border: 2px solid #ffc107; border-radius: 8px; padding: 15px 30px; font-size: 2rem; font-weight: bold; letter-spacing: 0.5rem; color: #000; margin: 10px 0;">
+                                    {{ otp_code }}
+                                </div>
+                            </div>
+                            <small class="d-block mt-2">Please enter this code below to complete registration.</small>
+                        </div>
+                        {% else %}
                         <div class="alert alert-info mt-2">
                             <i class="fas fa-info-circle me-2"></i>Check your email inbox (and spam folder) for the OTP code.
                         </div>
+                        {% endif %}
                     </div>
 
                     <form method="post" id="otpForm">
