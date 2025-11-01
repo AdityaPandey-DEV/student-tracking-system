@@ -102,8 +102,12 @@ def send_otp_notification(identifier, otp_code, purpose='registration', method='
         except (OSError, ConnectionError, TimeoutError) as e:
             # Network errors - return OTP so user can manually enter it
             error_code = getattr(e, 'errno', None)
-            if error_code == 101:  # Network is unreachable
+            error_str = str(e).lower()
+            
+            if error_code == 101 or 'unreachable' in error_str:
                 error_message = "Network unreachable - SMTP server cannot be reached. OTP is still valid."
+            elif 'timeout' in error_str or isinstance(e, TimeoutError):
+                error_message = "Email sending timed out. OTP is still valid - please check your email or use the code shown below."
             else:
                 error_message = f"Network error: {str(e)}. OTP is still valid."
             logger.error(f"Network error sending email to {identifier}: {e}")
@@ -222,9 +226,17 @@ def send_otp_email(email, otp_code, purpose='password_reset'):
                 if not settings.DEBUG:
                     _send_email_background_fallback(email, otp_code, purpose)
                 return False
-        except (TimeoutError, OSError, ConnectionError) as e:
-            # Network/timeout errors - try background send as fallback
-            logger.warning(f"⚠️ Email send timed out/failed for {email}: {str(e)}")
+        except TimeoutError as e:
+            # Timeout errors - log and try background send as fallback
+            timeout_seconds = getattr(settings, 'EMAIL_TIMEOUT', 30)
+            logger.warning(f"⚠️ Email send timed out after {timeout_seconds}s for {email}: {str(e)}")
+            if not settings.DEBUG:
+                # Try background send as fallback (might work even if sync timed out)
+                _send_email_background_fallback(email, otp_code, purpose)
+            raise  # Re-raise so calling code can handle it
+        except (OSError, ConnectionError) as e:
+            # Network/connection errors - try background send as fallback
+            logger.warning(f"⚠️ Email send connection error for {email}: {str(e)}")
             if not settings.DEBUG:
                 # Try background send as fallback
                 _send_email_background_fallback(email, otp_code, purpose)

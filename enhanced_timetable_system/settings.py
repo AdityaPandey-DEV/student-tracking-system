@@ -250,7 +250,8 @@ if EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend':
     
     # Add timeout settings to prevent worker timeouts (if SMTP is configured)
     if EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend':
-        EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=10, cast=int)  # 10 seconds timeout
+        # Increased timeout to 30 seconds for Render free tier (network can be slow)
+        EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=30, cast=int)  # 30 seconds timeout
         EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
 else:
     # Console backend or other
