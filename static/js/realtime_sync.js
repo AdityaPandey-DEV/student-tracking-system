@@ -61,6 +61,10 @@ class RealtimeSync {
             this.currentPage = 'dashboard';
         } else if (pathParts.includes('announcements')) {
             this.currentPage = 'announcements';
+        } else if (pathParts.includes('register')) {
+            this.currentPage = 'registration';
+        } else if (pathParts.includes('login') || pathParts.includes('landing')) {
+            this.currentPage = 'auth';
         }
         
         // Log initialization with safe page detection

@@ -1048,8 +1048,22 @@ function showToast(message, type = 'info') {
     });
     bsToast.show();
     
+    // Remove toast after it's hidden (with null safety)
     toast.addEventListener('hidden.bs.toast', function() {
-        toast.remove();
+        if (toast && toast.parentNode && document.body.contains(toast)) {
+            try {
+                toast.remove();
+            } catch (e) {
+                console.warn('Error removing toast:', e);
+                if (toast.parentNode) {
+                    try {
+                        toast.parentNode.removeChild(toast);
+                    } catch (removeError) {
+                        // Toast already removed, ignore
+                    }
+                }
+            }
+        }
     });
 }
 
