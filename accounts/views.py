@@ -293,7 +293,9 @@ def handle_admin_registration_step1(request):
         # Generate and send Email OTP (FREE!)
         otp_code = EmailOTP.generate_otp(email, 'registration')
         
-        if send_otp_notification(email, otp_code, 'registration', method='email'):
+        success, otp_code, error_message = handle_otp_notification(email, otp_code, 'registration')
+        
+        if success:
             # Store registration data in session
             request.session['reg_data'] = {
                 'first_name': first_name,
@@ -319,7 +321,8 @@ def handle_admin_registration_step1(request):
             return render(request, 'accounts/admin_register.html', {
                 'step': 2,
                 'email': email,
-                'show_otp': bool(error_message)
+                'show_otp': bool(error_message),
+                'otp_code': otp_code if error_message else None
             })
         else:
             messages.error(request, f'Failed to send OTP email: {error_message if error_message else "Unknown error"}. Please try again or contact support.')
