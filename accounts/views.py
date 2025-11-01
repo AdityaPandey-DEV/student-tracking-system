@@ -118,13 +118,7 @@ def handle_student_registration_step1(request):
         otp_code = EmailOTP.generate_otp(email, 'registration')
         
         # Send OTP notification (returns tuple: success, otp_code, error_message)
-        result = send_otp_notification(email, otp_code, 'registration', method='email')
-        if isinstance(result, tuple):
-            success, otp_code, error_message = result
-        else:
-            # Backward compatibility for old return format
-            success = result
-            error_message = None
+        success, otp_code, error_message = handle_otp_notification(email, otp_code, 'registration')
         
         if success:
             # Store registration data in session
@@ -464,7 +458,9 @@ def handle_teacher_registration_step1(request):
         # Generate and send Email OTP (FREE!)
         otp_code = EmailOTP.generate_otp(email, 'registration')
         
-        if send_otp_notification(email, otp_code, 'registration', method='email'):
+        success, otp_code, error_message = handle_otp_notification(email, otp_code, 'registration')
+        
+        if success:
             # Store registration data in session
             request.session['reg_data'] = {
                 'first_name': first_name,
