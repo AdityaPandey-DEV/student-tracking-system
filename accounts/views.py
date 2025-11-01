@@ -753,11 +753,13 @@ def reset_password(request):
 @require_http_methods(["POST"])
 def resend_registration_otp(request):
     """Resend OTP for registration verification."""
+    import threading
+    
     if 'reg_data' not in request.session:
         return JsonResponse({
             'success': False,
             'message': 'Registration session expired. Please start again.'
-        })
+        }, status=400)
     
     try:
         reg_data = request.session['reg_data']
@@ -767,38 +769,38 @@ def resend_registration_otp(request):
             return JsonResponse({
                 'success': False,
                 'message': 'Email address not found in session.'
-            })
+            }, status=400)
         
         # Generate new Email OTP
         otp_code = EmailOTP.generate_otp(email, 'registration')
         
-        # Send Email OTP
-        success, otp_code, error_message = handle_otp_notification(email, otp_code, 'registration')
+        # Send Email OTP in background to prevent timeout (fire-and-forget in production)
+        # Return immediately with success, OTP will be sent async
+        def send_email_async():
+            try:
+                handle_otp_notification(email, otp_code, 'registration')
+            except Exception as e:
+                logger.error(f"Background email send failed: {str(e)}")
         
-        if success:
-            message = f'New OTP sent to {email}'
-            if error_message:
-                if 'Network' in error_message or 'unreachable' in error_message:
-                    message = f'⚠️ Email failed. Your OTP: {otp_code}'
-                else:
-                    message = f'⚠️ {error_message}. Your OTP: {otp_code}'
-            
-            return JsonResponse({
-                'success': True,
-                'message': message,
-                'otp_code': otp_code if error_message else None  # Only send OTP if email failed
-            })
-        else:
-            return JsonResponse({
-                'success': False,
-                'message': f'Failed to send OTP email: {error_message if error_message else "Unknown error"}. Please try again.'
-            })
+        # Start email sending in background thread
+        email_thread = threading.Thread(target=send_email_async, daemon=True)
+        email_thread.start()
+        
+        # Return success immediately (email is being sent in background)
+        # In production, email sending is already non-blocking, but we return immediately here
+        # to prevent any potential timeout
+        return JsonResponse({
+            'success': True,
+            'message': f'OTP code sent to {email}. Please check your email inbox.',
+            'otp_code': None  # Don't send OTP in response, user should check email
+        })
             
     except Exception as e:
+        logger.error(f"Error in resend_registration_otp: {str(e)}")
         return JsonResponse({
             'success': False,
-            'message': 'An error occurred while sending OTP.'
-        })
+            'message': 'An error occurred while sending OTP. Please try again.'
+        }, status=500)
 
 @login_required
 def profile(request):
