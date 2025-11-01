@@ -250,14 +250,45 @@ window.TimetableUtils = {
         });
         
         // Auto-hide alerts (safe close to avoid remove() on null)
+        // Intercept Bootstrap Alert events to prevent null removal
+        document.addEventListener('closed.bs.alert', function(event) {
+            const alert = event.target;
+            if (!alert || !alert.parentNode) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+        }, true);
+        
         setTimeout(() => {
             document.querySelectorAll('.alert:not(.alert-permanent)').forEach((alertEl) => {
                 if (!alertEl || !document.body.contains(alertEl)) return;
                 try {
+                    // Wrap remove method with safety check
+                    const originalRemove = alertEl.remove;
+                    alertEl.remove = function() {
+                        if (this && this.parentNode && document.body.contains(this)) {
+                            originalRemove.call(this);
+                        }
+                    };
+                    
                     const bsAlert = bootstrap.Alert.getInstance(alertEl) || new bootstrap.Alert(alertEl);
-                    bsAlert && bsAlert.close();
+                    if (bsAlert && alertEl && document.body.contains(alertEl)) {
+                        // Add safety event listener
+                        const handleClose = function(e) {
+                            const target = e.target;
+                            if (!target || !target.parentNode) {
+                                e.stopPropagation();
+                                e.preventDefault();
+                            }
+                        };
+                        alertEl.addEventListener('closed.bs.alert', handleClose, { once: true });
+                        bsAlert.close();
+                    }
                 } catch (e) {
-                    try { alertEl.remove && alertEl.remove(); } catch (_) {}
+                    // Silently ignore if element is already removed
+                    if (alertEl && alertEl.parentNode && document.body.contains(alertEl)) {
+                        try { alertEl.remove && alertEl.remove(); } catch (_) {}
+                    }
                 }
             });
         }, 5000);
