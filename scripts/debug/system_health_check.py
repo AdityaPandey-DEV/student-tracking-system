@@ -11,7 +11,9 @@ import subprocess
 from pathlib import Path
 
 # Setup Django
-sys.path.insert(0, '.')
+# Add project root to path (go up 2 directories from scripts/debug/)
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, project_root)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'enhanced_timetable_system.settings')
 django.setup()
 

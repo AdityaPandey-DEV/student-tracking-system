@@ -13,7 +13,9 @@ from django.core.management import execute_from_command_line
 
 # Setup Django environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'enhanced_timetable_system.settings')
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Add project root to path (go up 2 directories from scripts/admin/)
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, project_root)
 django.setup()
 
 from django.contrib.auth import get_user_model
