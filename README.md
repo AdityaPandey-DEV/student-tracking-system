@@ -135,6 +135,18 @@ python test_email.py
 
 ## 🚀 Production Deployment (Render)
 
+### ⚠️ Important: Email Setup for Render Free Tier
+
+**Gmail SMTP is blocked on Render free tier!** Use **SendGrid** instead (100 emails/day free).
+
+**Quick Setup:**
+1. Create account: https://signup.sendgrid.com/
+2. Generate API key: https://app.sendgrid.com/settings/api_keys
+3. Verify sender email
+4. Add environment variables (see below)
+
+📖 **Full guide:** See [docs/RENDER_EMAIL_SETUP.md](docs/RENDER_EMAIL_SETUP.md)
+
 ### Environment Variables Required:
 ```env
 # Basic Settings
@@ -142,13 +154,20 @@ DEBUG=False
 SECRET_KEY=your-production-secret-key
 ALLOWED_HOSTS=your-domain.onrender.com,*.onrender.com
 
-# Email Configuration
+# Email Configuration (SendGrid - Recommended for Render)
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
-EMAIL_HOST=smtp.gmail.com
+EMAIL_PROVIDER=sendgrid
+EMAIL_HOST=smtp.sendgrid.net
 EMAIL_PORT=587
 EMAIL_USE_TLS=True
-EMAIL_HOST_USER=your-email@gmail.com
-EMAIL_HOST_PASSWORD=your-gmail-app-password
+EMAIL_HOST_USER=apikey
+SENDGRID_API_KEY=SG.your-sendgrid-api-key-here
+DEFAULT_FROM_EMAIL=your-verified-email@example.com
+
+# Alternative: Gmail SMTP (works locally, blocked on Render free tier)
+# EMAIL_HOST=smtp.gmail.com
+# EMAIL_HOST_USER=your-email@gmail.com
+# EMAIL_HOST_PASSWORD=your-gmail-app-password
 
 # Security
 CSRF_TRUSTED_ORIGINS=https://your-domain.onrender.com

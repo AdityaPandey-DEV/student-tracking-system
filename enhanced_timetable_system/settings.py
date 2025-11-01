@@ -210,29 +210,51 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # Email Configuration
-# Smart email setup: Check if SMTP is explicitly configured, otherwise use console backend
+# Smart email setup: Supports Gmail SMTP, SendGrid, and console backend
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+
+# Determine email provider from environment
+EMAIL_PROVIDER = config('EMAIL_PROVIDER', default='').lower()
 
 # If SMTP backend is configured, set up all SMTP settings
 if EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend':
-    EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-    EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-    EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-    EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-    EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-    DEFAULT_FROM_EMAIL = EMAIL_HOST_USER or 'noreply@enhanced-timetable.com'
+    # Check if using SendGrid (recommended for Render free tier)
+    if EMAIL_PROVIDER == 'sendgrid' or config('SENDGRID_API_KEY', default=''):
+        # SendGrid Configuration (works on Render free tier)
+        SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
+        if SENDGRID_API_KEY:
+            EMAIL_HOST = config('EMAIL_HOST', default='smtp.sendgrid.net')
+            EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+            EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+            EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='apikey')
+            EMAIL_HOST_PASSWORD = SENDGRID_API_KEY
+            DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=config('SENDGRID_FROM_EMAIL', default='noreply@example.com'))
+            print("✅ SendGrid email configuration loaded")
+        else:
+            print("⚠️  SendGrid API key not found. Please set SENDGRID_API_KEY environment variable")
+            EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    else:
+        # Gmail or other SMTP configuration
+        EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+        EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+        EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+        EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+        EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+        DEFAULT_FROM_EMAIL = EMAIL_HOST_USER or config('DEFAULT_FROM_EMAIL', default='noreply@enhanced-timetable.com')
+        
+        # Validate required SMTP settings
+        if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
+            print("⚠️  SMTP backend configured but missing EMAIL_HOST_USER or EMAIL_HOST_PASSWORD")
+            print("🔧 Run 'python scripts/setup/setup_gmail.py' to configure Gmail SMTP")
+            print("🔧 Or run 'python scripts/setup/setup_sendgrid.py' to configure SendGrid (recommended for Render)")
     
-    # Add timeout settings to prevent worker timeouts
-    EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=10, cast=int)  # 10 seconds timeout
-    EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
-    
-    # Validate required SMTP settings
-    if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
-        print("⚠️  SMTP backend configured but missing EMAIL_HOST_USER or EMAIL_HOST_PASSWORD")
-        print("🔧 Run 'python setup_gmail.py' to configure Gmail SMTP")
+    # Add timeout settings to prevent worker timeouts (if SMTP is configured)
+    if EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend':
+        EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=10, cast=int)  # 10 seconds timeout
+        EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
 else:
     # Console backend or other
-    DEFAULT_FROM_EMAIL = 'noreply@enhanced-timetable.local'
+    DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@enhanced-timetable.local')
 
 # OpenAI Configuration
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
