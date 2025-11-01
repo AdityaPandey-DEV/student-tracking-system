@@ -207,8 +207,11 @@ DATABASE_URL=postgresql://user:password@host:port/database
 
 ### Test Email Configuration
 ```bash
-python test_email.py
+python scripts/email/check_email_config.py  # Check config (no Django needed)
+python manage.py test_sendgrid_email your-email@example.com  # Test email (on Render)
 ```
+
+See `docs/email/` for comprehensive email setup guides.
 
 ### Run System Health Check
 ```bash
