@@ -210,29 +210,32 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # Email Configuration
-# Smart email setup: Supports Gmail SMTP, SendGrid, and console backend
+# Smart email setup: Supports Gmail SMTP, SendGrid API, SendGrid SMTP, and console backend
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 
 # Determine email provider from environment
 EMAIL_PROVIDER = config('EMAIL_PROVIDER', default='').lower()
 
-# If SMTP backend is configured, set up all SMTP settings
-if EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend':
-    # Check if using SendGrid (recommended for Render free tier)
-    if EMAIL_PROVIDER == 'sendgrid' or config('SENDGRID_API_KEY', default=''):
-        # SendGrid Configuration (works on Render free tier)
-        SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
-        if SENDGRID_API_KEY:
-            EMAIL_HOST = config('EMAIL_HOST', default='smtp.sendgrid.net')
-            EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-            EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-            EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='apikey')
-            EMAIL_HOST_PASSWORD = SENDGRID_API_KEY
-            DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=config('SENDGRID_FROM_EMAIL', default='noreply@example.com'))
-            print("✅ SendGrid email configuration loaded")
-        else:
-            print("⚠️  SendGrid API key not found. Please set SENDGRID_API_KEY environment variable")
-            EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Check if SendGrid API key is available (preferred method - uses HTTP API, not SMTP)
+SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
+
+# Prefer SendGrid HTTP API over SMTP (works better on Render free tier)
+if SENDGRID_API_KEY and (EMAIL_PROVIDER == 'sendgrid' or EMAIL_BACKEND == 'django.core.mail.backends.console.EmailBackend'):
+    # Use SendGrid HTTP API backend (more reliable than SMTP)
+    EMAIL_BACKEND = 'utils.sendgrid_backend.SendGridBackend'
+    DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=config('SENDGRID_FROM_EMAIL', default='noreply@example.com'))
+    print("✅ SendGrid HTTP API email backend configured (recommended for Render)")
+elif EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend':
+    # Fallback to SMTP if explicitly configured
+    if EMAIL_PROVIDER == 'sendgrid' and SENDGRID_API_KEY:
+        # SendGrid SMTP Configuration (less reliable on Render free tier)
+        EMAIL_HOST = config('EMAIL_HOST', default='smtp.sendgrid.net')
+        EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+        EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+        EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='apikey')
+        EMAIL_HOST_PASSWORD = SENDGRID_API_KEY
+        DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=config('SENDGRID_FROM_EMAIL', default='noreply@example.com'))
+        print("⚠️  SendGrid SMTP configured (consider using HTTP API for better reliability)")
     else:
         # Gmail or other SMTP configuration
         EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
@@ -253,6 +256,10 @@ if EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend':
         # Increased timeout to 30 seconds for Render free tier (network can be slow)
         EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=30, cast=int)  # 30 seconds timeout
         EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
+    elif 'sendgrid_backend' in EMAIL_BACKEND:
+        # SendGrid HTTP API - no timeout needed, uses HTTP requests
+        # Set default from email
+        DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=config('SENDGRID_FROM_EMAIL', default='noreply@example.com'))
 else:
     # Console backend or other
     DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@enhanced-timetable.local')

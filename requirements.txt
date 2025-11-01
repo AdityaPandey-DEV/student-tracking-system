@@ -17,3 +17,4 @@ dj-database-url==2.1.0
 psycopg[binary]
 twilio==9.7.0
 whitenoise==6.7.0
+sendgrid==6.10.0
