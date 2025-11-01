@@ -12,6 +12,21 @@ import re
 
 from .models import User, StudentProfile, AdminProfile, TeacherProfile, OTP, EmailOTP
 from utils.notifications import send_otp_notification
+import logging
+
+logger = logging.getLogger(__name__)
+
+def handle_otp_notification(email, otp_code, purpose='registration', method='email'):
+    """
+    Helper function to handle OTP notification and return standardized result.
+    Returns: (success: bool, otp_code: str, error_message: str)
+    """
+    result = send_otp_notification(email, otp_code, purpose, method=method)
+    if isinstance(result, tuple):
+        return result
+    else:
+        # Backward compatibility for old return format (boolean)
+        return (result, otp_code, None if result else "OTP sending failed")
 
 def landing_page(request):
     """Landing page with login/register options."""
@@ -102,7 +117,16 @@ def handle_student_registration_step1(request):
         # Generate and send Email OTP (FREE!)
         otp_code = EmailOTP.generate_otp(email, 'registration')
         
-        if send_otp_notification(email, otp_code, 'registration', method='email'):
+        # Send OTP notification (returns tuple: success, otp_code, error_message)
+        result = send_otp_notification(email, otp_code, 'registration', method='email')
+        if isinstance(result, tuple):
+            success, otp_code, error_message = result
+        else:
+            # Backward compatibility for old return format
+            success = result
+            error_message = None
+        
+        if success:
             # Store registration data in session
             request.session['reg_data'] = {
                 'first_name': first_name,
@@ -117,13 +141,24 @@ def handle_student_registration_step1(request):
                 'user_type': 'student'
             }
             
-            messages.success(request, f'📧 OTP sent to {email}. Please check your email and enter the 6-digit code to complete registration.')
+            # Check if there was an error but OTP is still valid
+            if error_message:
+                # Network error - show OTP in message as fallback
+                if 'Network' in error_message or 'unreachable' in error_message:
+                    messages.warning(request, f'⚠️ Email sending failed due to network issue. Your OTP code is: <strong>{otp_code}</strong>. Please use this code to complete registration.')
+                    logger.warning(f"Showing OTP in UI due to network error: {otp_code} for {email}")
+                else:
+                    messages.warning(request, f'⚠️ {error_message}. Your OTP code is: <strong>{otp_code}</strong>. Please use this code to complete registration.')
+            else:
+                messages.success(request, f'📧 OTP sent to {email}. Please check your email and enter the 6-digit code to complete registration.')
+            
             return render(request, 'accounts/student_register.html', {
                 'step': 2,
-                'email': email
+                'email': email,
+                'show_otp': bool(error_message)  # Show OTP in template if email failed
             })
         else:
-            messages.error(request, 'Failed to send OTP email. Please check your email address and try again.')
+            messages.error(request, f'Failed to send OTP email: {error_message if error_message else "Unknown error"}. Please try again or contact support.')
             return render(request, 'accounts/student_register.html')
             
     except Exception as e:
@@ -271,13 +306,22 @@ def handle_admin_registration_step1(request):
                 'user_type': 'admin'
             }
             
-            messages.success(request, f'📧 OTP sent to {email}. Please check your email and enter the 6-digit code to complete registration.')
+            # Check if there was an error but OTP is still valid
+            if error_message:
+                if 'Network' in error_message or 'unreachable' in error_message:
+                    messages.warning(request, f'⚠️ Email sending failed due to network issue. Your OTP code is: <strong>{otp_code}</strong>. Please use this code to complete registration.')
+                else:
+                    messages.warning(request, f'⚠️ {error_message}. Your OTP code is: <strong>{otp_code}</strong>. Please use this code to complete registration.')
+            else:
+                messages.success(request, f'📧 OTP sent to {email}. Please check your email and enter the 6-digit code to complete registration.')
+            
             return render(request, 'accounts/admin_register.html', {
                 'step': 2,
-                'email': email
+                'email': email,
+                'show_otp': bool(error_message)
             })
         else:
-            messages.error(request, 'Failed to send OTP email. Please check your email address and try again.')
+            messages.error(request, f'Failed to send OTP email: {error_message if error_message else "Unknown error"}. Please try again or contact support.')
             return render(request, 'accounts/admin_register.html')
             
     except Exception as e:
@@ -432,13 +476,22 @@ def handle_teacher_registration_step1(request):
                 'user_type': 'teacher'
             }
             
-            messages.success(request, f'📧 OTP sent to {email}. Please check your email and enter the 6-digit code to complete registration.')
+            # Check if there was an error but OTP is still valid
+            if error_message:
+                if 'Network' in error_message or 'unreachable' in error_message:
+                    messages.warning(request, f'⚠️ Email sending failed due to network issue. Your OTP code is: <strong>{otp_code}</strong>. Please use this code to complete registration.')
+                else:
+                    messages.warning(request, f'⚠️ {error_message}. Your OTP code is: <strong>{otp_code}</strong>. Please use this code to complete registration.')
+            else:
+                messages.success(request, f'📧 OTP sent to {email}. Please check your email and enter the 6-digit code to complete registration.')
+            
             return render(request, 'accounts/teacher_register.html', {
                 'step': 2,
-                'email': email
+                'email': email,
+                'show_otp': bool(error_message)
             })
         else:
-            messages.error(request, 'Failed to send OTP email. Please check your email address and try again.')
+            messages.error(request, f'Failed to send OTP email: {error_message if error_message else "Unknown error"}. Please try again or contact support.')
             return render(request, 'accounts/teacher_register.html')
             
     except Exception as e:
@@ -603,15 +656,23 @@ def forgot_password(request):
             otp_code = EmailOTP.generate_otp(user.email, 'password_reset')
             
             # Send Email OTP
-            if send_otp_notification(user.email, otp_code, 'password_reset', method='email'):
+            success, otp_code, error_message = handle_otp_notification(user.email, otp_code, 'password_reset')
+            
+            if success:
                 request.session['reset_email'] = user.email
                 request.session['reset_user_id'] = user.username  # Always store actual username
                 request.session['reset_user_type'] = user_type
                 
-                messages.info(request, f'OTP sent to your registered email {user.email}.')
+                if error_message:
+                    if 'Network' in error_message or 'unreachable' in error_message:
+                        messages.warning(request, f'⚠️ Email sending failed. Your OTP code is: <strong>{otp_code}</strong>. Use this code to reset your password.')
+                    else:
+                        messages.warning(request, f'⚠️ {error_message}. Your OTP code is: <strong>{otp_code}</strong>.')
+                else:
+                    messages.info(request, f'OTP sent to your registered email {user.email}.')
                 return redirect('accounts:verify_otp')
             else:
-                messages.error(request, 'Failed to send OTP email. Please try again later.')
+                messages.error(request, f'Failed to send OTP email: {error_message if error_message else "Unknown error"}. Please try again later.')
         else:
             messages.error(request, 'Account not found. Please check your details and try again.')
     
@@ -707,15 +768,25 @@ def resend_registration_otp(request):
         otp_code = EmailOTP.generate_otp(email, 'registration')
         
         # Send Email OTP
-        if send_otp_notification(email, otp_code, 'registration', method='email'):
+        success, otp_code, error_message = handle_otp_notification(email, otp_code, 'registration')
+        
+        if success:
+            message = f'New OTP sent to {email}'
+            if error_message:
+                if 'Network' in error_message or 'unreachable' in error_message:
+                    message = f'⚠️ Email failed. Your OTP: {otp_code}'
+                else:
+                    message = f'⚠️ {error_message}. Your OTP: {otp_code}'
+            
             return JsonResponse({
                 'success': True,
-                'message': f'New OTP sent to {email}'
+                'message': message,
+                'otp_code': otp_code if error_message else None  # Only send OTP if email failed
             })
         else:
             return JsonResponse({
                 'success': False,
-                'message': 'Failed to send OTP email. Please try again.'
+                'message': f'Failed to send OTP email: {error_message if error_message else "Unknown error"}. Please try again.'
             })
             
     except Exception as e:

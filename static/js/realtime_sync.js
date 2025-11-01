@@ -63,7 +63,10 @@ class RealtimeSync {
             this.currentPage = 'announcements';
         }
         
-        console.log(`RealtimeSync initialized for ${this.currentUser} on ${this.currentPage} page`);
+        // Log initialization with safe page detection
+        const pageInfo = this.currentPage || 'unknown';
+        const userInfo = this.currentUser || 'unknown';
+        console.log(`RealtimeSync initialized for ${userInfo} on ${pageInfo} page`);
     }
     
     shouldStartPolling() {
@@ -346,18 +349,51 @@ class RealtimeSync {
         if (refreshBtn && actionCallback) {
             refreshBtn.addEventListener('click', () => {
                 actionCallback();
-                notification.remove();
+                // Safely remove notification
+                if (notification && notification.parentNode) {
+                    try {
+                        notification.remove();
+                    } catch (e) {
+                        console.warn('Error removing notification:', e);
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }
+                }
             });
         }
         
-        dismissBtn.addEventListener('click', () => {
-            notification.remove();
-        });
+        if (dismissBtn) {
+            dismissBtn.addEventListener('click', () => {
+                // Safely remove notification
+                if (notification && notification.parentNode) {
+                    try {
+                        notification.remove();
+                    } catch (e) {
+                        console.warn('Error removing notification:', e);
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }
+                }
+            });
+        }
         
         // Auto-remove after 10 seconds
         setTimeout(() => {
-            if (document.body.contains(notification)) {
-                notification.remove();
+            if (notification && document.body.contains(notification)) {
+                try {
+                    notification.remove();
+                } catch (e) {
+                    console.warn('Error auto-removing notification:', e);
+                    if (notification.parentNode) {
+                        try {
+                            notification.parentNode.removeChild(notification);
+                        } catch (removeError) {
+                            console.warn('Error removing notification from parent:', removeError);
+                        }
+                    }
+                }
             }
         }, 10000);
     }

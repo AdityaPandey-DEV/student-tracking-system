@@ -601,12 +601,35 @@
             }
         };
         
-        // Auto-dismiss alerts after 5 seconds
+        // Auto-dismiss alerts after 5 seconds (with null safety)
         setTimeout(function() {
             const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
             alerts.forEach(function(alert) {
-                const bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
+                // Check if element still exists in DOM
+                if (!alert || !document.body.contains(alert)) return;
+                
+                try {
+                    // Try to get existing Bootstrap Alert instance or create new one
+                    let bsAlert = bootstrap.Alert.getInstance(alert);
+                    if (!bsAlert) {
+                        bsAlert = new bootstrap.Alert(alert);
+                    }
+                    
+                    // Safely close the alert
+                    if (bsAlert && alert && document.body.contains(alert)) {
+                        bsAlert.close();
+                    }
+                } catch (e) {
+                    // If Bootstrap Alert fails, safely remove element manually
+                    console.warn('Error closing alert:', e);
+                    try {
+                        if (alert && alert.parentNode) {
+                            alert.remove();
+                        }
+                    } catch (removeError) {
+                        console.warn('Error removing alert:', removeError);
+                    }
+                }
             });
         }, 5000);
         

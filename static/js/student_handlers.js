@@ -345,7 +345,17 @@ class RecommendationHandler {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert.remove();
+                // Safely remove alert
+                if (alert && alert.parentNode) {
+                    try {
+                        alert.remove();
+                    } catch (e) {
+                        console.warn('Error removing alert:', e);
+                        if (alert.parentNode) {
+                            alert.parentNode.removeChild(alert);
+                        }
+                    }
+                }
             }
         })
         .catch(error => {

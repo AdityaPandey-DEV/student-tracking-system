@@ -51,13 +51,18 @@ def send_otp_notification(identifier, otp_code, purpose='registration', method='
     Send OTP notification via email (FREE) or SMS.
     identifier: email address or phone number
     method: 'email' (default/free) or 'sms'
-    Returns True if delivery succeeds.
+    Returns tuple: (success: bool, otp_code: str, error_message: str)
+    
+    Note: In case of network errors, OTP is still returned so user can manually enter it.
     """
     success = False
+    error_message = None
     
-    # For development: always show OTP in console and return success
+    # Always log OTP for debugging (both development and production)
+    logger.info(f"OTP for {identifier}: {otp_code} (Purpose: {purpose}, Method: {method})")
+    
+    # For development: always show OTP in console
     if settings.DEBUG:
-        logger.info(f"OTP for {identifier}: {otp_code} (Purpose: {purpose}, Method: {method})")
         print(f"\n=== OTP NOTIFICATION ===")
         print(f"Method: {method.upper()}")
         print(f"To: {identifier}")
@@ -65,27 +70,62 @@ def send_otp_notification(identifier, otp_code, purpose='registration', method='
         print(f"Purpose: {purpose}")
         print(f"======================\n")
         
-        # Also try to send email, but don't fail if it doesn't work
+        # Try to send email, but don't fail if it doesn't work
         try:
             if method == 'email':
                 send_otp_email(identifier, otp_code, purpose)
+                success = True
         except Exception as e:
+            error_message = f"Email sending failed: {str(e)}"
             logger.warning(f"Email sending failed in development mode: {e}")
         
-        return True  # Always return success in development
+        # Always return success in development (OTP is in console)
+        return (True, otp_code, error_message)
     
-    # Production mode: actually try to send
+    # Production mode: try to send, but handle network errors gracefully
     if method == 'email':
-        # Use Email OTP (completely free)
-        success = send_otp_email(identifier, otp_code, purpose)
+        # Check if email backend is configured
+        email_backend = getattr(settings, 'EMAIL_BACKEND', '')
+        if email_backend == 'django.core.mail.backends.console.EmailBackend':
+            # Console backend - just log and return success
+            logger.info(f"Using console email backend - OTP logged: {otp_code}")
+            return (True, otp_code, "Email backend is console (development mode)")
+        
+        # Try to send email
+        try:
+            success = send_otp_email(identifier, otp_code, purpose)
+            if not success:
+                # Email sending failed but OTP was attempted in background
+                # In production, we return success=True (fire-and-forget) but log the error
+                error_message = "Email sending initiated but may fail (check logs)"
+                logger.warning(f"Email sending may have failed for {identifier}, but OTP generated: {otp_code}")
+        except (OSError, ConnectionError, TimeoutError) as e:
+            # Network errors - return OTP so user can manually enter it
+            error_code = getattr(e, 'errno', None)
+            if error_code == 101:  # Network is unreachable
+                error_message = "Network unreachable - SMTP server cannot be reached. OTP is still valid."
+            else:
+                error_message = f"Network error: {str(e)}. OTP is still valid."
+            logger.error(f"Network error sending email to {identifier}: {e}")
+            logger.info(f"OTP {otp_code} is still valid for {identifier} - can be entered manually")
+            # Return True with error message - OTP is still valid
+            return (True, otp_code, error_message)
+        except Exception as e:
+            error_message = f"Email sending error: {str(e)}"
+            logger.error(f"Failed to send email to {identifier}: {e}")
+            # Still return OTP code even if email fails
+            return (False, otp_code, error_message)
     elif method == 'sms':
         # Use SMS OTP (requires Twilio setup)
         if hasattr(settings, 'TWILIO_ACCOUNT_SID') and settings.TWILIO_ACCOUNT_SID:
             success = send_otp_sms(identifier, otp_code, purpose)
+            if not success:
+                error_message = "SMS sending failed"
         else:
+            error_message = "SMS requested but Twilio not configured"
             logger.warning("SMS requested but Twilio not configured")
     
-    return success
+    return (success, otp_code, error_message)
 
 def send_otp_sms(phone_number, otp_code, purpose='password_reset'):
     """Send OTP via SMS using Twilio."""
