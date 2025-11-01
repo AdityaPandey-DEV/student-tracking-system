@@ -204,55 +204,58 @@ def _send_email_sync(email, otp_code, purpose):
     return result > 0
 
 def send_otp_email(email, otp_code, purpose='password_reset'):
-    """Send OTP via email with timeout protection and non-blocking execution in production."""
+    """Send OTP via email with timeout protection. Tries synchronous send first."""
     try:
         # Get timeout from settings, default to 10 seconds
         timeout_seconds = getattr(settings, 'EMAIL_TIMEOUT', 10)
         
-        # In production, send email in a background thread (fire-and-forget)
-        # This prevents worker timeouts while still attempting to send the email
-        if not settings.DEBUG:
-            def send_in_thread():
-                try:
-                    result = _send_email_sync(email, otp_code, purpose)
-                    if result:
-                        logger.info(f"Email sent successfully to {email}")
-                    else:
-                        logger.warning(f"Email sending to {email} failed (connection might have failed)")
-                except TimeoutError:
-                    logger.error(f"Email sending to {email} timed out after {timeout_seconds} seconds")
-                except Exception as e:
-                    logger.error(f"Failed to send email to {email}: {str(e)}")
-            
-            # Start thread and return immediately (fire-and-forget)
-            thread = threading.Thread(target=send_in_thread)
-            thread.daemon = True
-            thread.start()
-            
-            # Return True immediately - email is being sent in background
-            # User can request resend if email doesn't arrive
-            logger.info(f"Email sending initiated for {email} (non-blocking)")
-            return True
-        else:
-            # In development, send synchronously but with timeout protection
-            try:
-                result = _send_email_sync(email, otp_code, purpose)
-                if result:
-                    logger.info(f"Email sent successfully to {email}")
-                    return True
-                else:
-                    logger.warning(f"Email sending to {email} returned False")
-                    return False
-            except TimeoutError:
-                logger.error(f"Email sending to {email} timed out")
+        # Try synchronous send first (with timeout protection)
+        # This ensures we can catch errors immediately
+        try:
+            result = _send_email_sync(email, otp_code, purpose)
+            if result:
+                logger.info(f"✅ Email sent successfully to {email}")
+                return True
+            else:
+                logger.warning(f"⚠️ Email sending to {email} returned False")
+                # Still try background send as fallback in production
+                if not settings.DEBUG:
+                    _send_email_background_fallback(email, otp_code, purpose)
                 return False
-            except Exception as e:
-                logger.error(f"Failed to send email to {email}: {str(e)}")
-                return False
+        except (TimeoutError, OSError, ConnectionError) as e:
+            # Network/timeout errors - try background send as fallback
+            logger.warning(f"⚠️ Email send timed out/failed for {email}: {str(e)}")
+            if not settings.DEBUG:
+                # Try background send as fallback
+                _send_email_background_fallback(email, otp_code, purpose)
+            raise  # Re-raise so calling code can handle it
+        except Exception as e:
+            logger.error(f"❌ Failed to send email to {email}: {str(e)}")
+            # Try background send as fallback in production
+            if not settings.DEBUG:
+                _send_email_background_fallback(email, otp_code, purpose)
+            raise  # Re-raise so calling code can handle it
         
     except Exception as e:
-        logger.error(f"Failed to initiate email sending to {email}: {str(e)}")
+        logger.error(f"Failed to send email to {email}: {str(e)}")
         return False
+
+def _send_email_background_fallback(email, otp_code, purpose):
+    """Send email in background thread as fallback if synchronous send fails."""
+    def send_in_thread():
+        try:
+            logger.info(f"Attempting background email send to {email} (fallback)")
+            result = _send_email_sync(email, otp_code, purpose)
+            if result:
+                logger.info(f"✅ Background email sent successfully to {email}")
+            else:
+                logger.warning(f"⚠️ Background email send failed for {email}")
+        except Exception as e:
+            logger.error(f"❌ Background email send error for {email}: {str(e)}")
+    
+    thread = threading.Thread(target=send_in_thread)
+    thread.daemon = True
+    thread.start()
 
 def send_announcement_notification(users, announcement):
     """Send announcement notification to users."""
