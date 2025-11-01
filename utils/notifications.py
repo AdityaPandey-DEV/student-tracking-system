@@ -4,13 +4,47 @@ Supports both SMS (Twilio) and Email notifications.
 """
 
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import send_mail, get_connection
 from django.template.loader import render_to_string
 import logging
 import os
+import threading
+from functools import wraps
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+def timeout_handler(timeout_seconds):
+    """Decorator to add timeout to function calls."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            result = [None]
+            exception = [None]
+            
+            def target():
+                try:
+                    result[0] = func(*args, **kwargs)
+                except Exception as e:
+                    exception[0] = e
+            
+            thread = threading.Thread(target=target)
+            thread.daemon = True
+            thread.start()
+            thread.join(timeout_seconds)
+            
+            if thread.is_alive():
+                # Thread is still running - timeout occurred
+                logger.error(f"{func.__name__} timed out after {timeout_seconds} seconds")
+                raise TimeoutError(f"Operation timed out after {timeout_seconds} seconds")
+            
+            if exception[0]:
+                raise exception[0]
+            
+            return result[0]
+        
+        return wrapper
+    return decorator
 
 def send_otp_notification(identifier, otp_code, purpose='registration', method='email'):
     """
@@ -83,39 +117,101 @@ def send_otp_sms(phone_number, otp_code, purpose='password_reset'):
         logger.error(f"Failed to send SMS to {phone_number}: {str(e)}")
         return False
 
+def _send_email_sync(email, otp_code, purpose):
+    """Internal synchronous email sending function with explicit connection timeout."""
+    if purpose == 'password_reset':
+        subject = "Student Tracking System - Password Reset OTP"
+        template = 'emails/password_reset_otp.html'
+    else:
+        subject = "Student Tracking System - Verification Code"
+        template = 'emails/verification_otp.html'
+    
+    context = {
+        'otp_code': otp_code,
+        'purpose': purpose,
+        'expires_minutes': 10
+    }
+    
+    html_message = render_to_string(template, context)
+    plain_message = f"Your OTP verification code is: {otp_code}. This code expires in 10 minutes."
+    
+    # Get timeout from settings
+    timeout = getattr(settings, 'EMAIL_TIMEOUT', 10)
+    
+    # Create connection with explicit timeout
+    connection = get_connection(
+        backend=None,  # Use default backend from settings
+        fail_silently=False,  # We want to catch errors
+        timeout=timeout  # Explicit timeout
+    )
+    
+    # Send email using the connection with timeout
+    # send_mail with connection parameter uses the provided connection
+    result = send_mail(
+        subject=subject,
+        message=plain_message,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[email],
+        html_message=html_message,
+        connection=connection,
+        fail_silently=False
+    )
+    
+    # Close connection
+    connection.close()
+    
+    # send_mail returns the number of emails sent (should be 1)
+    return result > 0
+
 def send_otp_email(email, otp_code, purpose='password_reset'):
-    """Send OTP via email."""
+    """Send OTP via email with timeout protection and non-blocking execution in production."""
     try:
-        if purpose == 'password_reset':
-            subject = "Student Tracking System - Password Reset OTP"
-            template = 'emails/password_reset_otp.html'
+        # Get timeout from settings, default to 10 seconds
+        timeout_seconds = getattr(settings, 'EMAIL_TIMEOUT', 10)
+        
+        # In production, send email in a background thread (fire-and-forget)
+        # This prevents worker timeouts while still attempting to send the email
+        if not settings.DEBUG:
+            def send_in_thread():
+                try:
+                    result = _send_email_sync(email, otp_code, purpose)
+                    if result:
+                        logger.info(f"Email sent successfully to {email}")
+                    else:
+                        logger.warning(f"Email sending to {email} failed (connection might have failed)")
+                except TimeoutError:
+                    logger.error(f"Email sending to {email} timed out after {timeout_seconds} seconds")
+                except Exception as e:
+                    logger.error(f"Failed to send email to {email}: {str(e)}")
+            
+            # Start thread and return immediately (fire-and-forget)
+            thread = threading.Thread(target=send_in_thread)
+            thread.daemon = True
+            thread.start()
+            
+            # Return True immediately - email is being sent in background
+            # User can request resend if email doesn't arrive
+            logger.info(f"Email sending initiated for {email} (non-blocking)")
+            return True
         else:
-            subject = "Student Tracking System - Verification Code"
-            template = 'emails/verification_otp.html'
-        
-        context = {
-            'otp_code': otp_code,
-            'purpose': purpose,
-            'expires_minutes': 10
-        }
-        
-        html_message = render_to_string(template, context)
-        plain_message = f"Your OTP verification code is: {otp_code}. This code expires in 10 minutes."
-        
-        send_mail(
-            subject=subject,
-            message=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            html_message=html_message,
-            fail_silently=False
-        )
-        
-        logger.info(f"Email sent successfully to {email}")
-        return True
+            # In development, send synchronously but with timeout protection
+            try:
+                result = _send_email_sync(email, otp_code, purpose)
+                if result:
+                    logger.info(f"Email sent successfully to {email}")
+                    return True
+                else:
+                    logger.warning(f"Email sending to {email} returned False")
+                    return False
+            except TimeoutError:
+                logger.error(f"Email sending to {email} timed out")
+                return False
+            except Exception as e:
+                logger.error(f"Failed to send email to {email}: {str(e)}")
+                return False
         
     except Exception as e:
-        logger.error(f"Failed to send email to {email}: {str(e)}")
+        logger.error(f"Failed to initiate email sending to {email}: {str(e)}")
         return False
 
 def send_announcement_notification(users, announcement):

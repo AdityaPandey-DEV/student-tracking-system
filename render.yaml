@@ -3,7 +3,7 @@ services:
     name: enhanced-timetable-system
     env: python
     buildCommand: "./build.sh"
-    startCommand: "gunicorn enhanced_timetable_system.wsgi:application"
+    startCommand: "gunicorn enhanced_timetable_system.wsgi:application --timeout 60 --workers 2 --threads 2"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9

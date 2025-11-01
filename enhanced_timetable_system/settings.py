@@ -222,6 +222,10 @@ if EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend':
     EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
     DEFAULT_FROM_EMAIL = EMAIL_HOST_USER or 'noreply@enhanced-timetable.com'
     
+    # Add timeout settings to prevent worker timeouts
+    EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=10, cast=int)  # 10 seconds timeout
+    EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
+    
     # Validate required SMTP settings
     if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
         print("⚠️  SMTP backend configured but missing EMAIL_HOST_USER or EMAIL_HOST_PASSWORD")
