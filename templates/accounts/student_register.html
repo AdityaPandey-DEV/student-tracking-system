@@ -232,6 +232,12 @@
                             <strong>{{ email }}</strong>
                         </p>
                         
+                        <div class="alert alert-info mt-2">
+                            <i class="fas fa-inbox me-2"></i>
+                            <small><strong>Email not in inbox?</strong> Check your <strong>spam/junk folder</strong>. 
+                            If found in spam, mark as "Not Spam" to receive future emails in your inbox.</small>
+                        </div>
+                        
                         {% if show_otp and otp_code %}
                         <!-- OTP Display when email fails -->
                         <div class="alert alert-warning mt-3" role="alert">
