@@ -602,15 +602,32 @@
         };
         
         // Auto-dismiss alerts after 5 seconds (with null safety)
-        // Intercept Bootstrap Alert close events to prevent null element removal
-        document.addEventListener('closed.bs.alert', function(event) {
-            const alert = event.target;
-            if (!alert || !alert.parentNode) {
-                // Prevent Bootstrap from trying to remove already-removed element
-                event.stopPropagation();
-                return;
-            }
-        }, true); // Use capture phase to intercept before Bootstrap handles it
+        // Override Bootstrap Alert close method to prevent null element removal errors
+        if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
+            const OriginalAlert = bootstrap.Alert;
+            const originalClose = OriginalAlert.prototype.close;
+            OriginalAlert.prototype.close = function() {
+                const element = this._element;
+                // Check if element still exists before trying to close
+                if (!element || !document.body.contains(element)) {
+                    // Element already removed, just clean up instance
+                    this._element = null;
+                    this._isTransitioning = false;
+                    return;
+                }
+                try {
+                    return originalClose.call(this);
+                } catch (e) {
+                    // If Bootstrap's close fails, safely remove element manually
+                    console.warn('Alert close error (non-critical):', e);
+                    if (element && element.parentNode && document.body.contains(element)) {
+                        element.remove();
+                    }
+                    this._element = null;
+                    this._isTransitioning = false;
+                }
+            };
+        }
         
         setTimeout(function() {
             const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
@@ -619,31 +636,14 @@
                 if (!alert || !document.body.contains(alert)) return;
                 
                 try {
-                    // Add safety wrapper for Bootstrap Alert close
-                    const originalRemove = alert.remove;
-                    alert.remove = function() {
-                        if (this && this.parentNode && document.body.contains(this)) {
-                            originalRemove.call(this);
-                        }
-                    };
-                    
                     // Try to get existing Bootstrap Alert instance or create new one
                     let bsAlert = bootstrap.Alert.getInstance(alert);
                     if (!bsAlert) {
                         bsAlert = new bootstrap.Alert(alert);
                     }
                     
-                    // Safely close the alert with double-check
+                    // Close alert safely (our override will handle null checks)
                     if (bsAlert && alert && document.body.contains(alert)) {
-                        // Add event listener before closing
-                        const handleClose = function(e) {
-                            const target = e.target;
-                            if (!target || !target.parentNode) {
-                                e.stopPropagation();
-                                e.preventDefault();
-                            }
-                        };
-                        alert.addEventListener('closed.bs.alert', handleClose, { once: true });
                         bsAlert.close();
                     }
                 } catch (e) {
@@ -655,7 +655,6 @@
                         }
                     } catch (removeError) {
                         // Element already removed, ignore
-                        console.warn('Error removing alert (already removed):', removeError);
                     }
                 }
             });
