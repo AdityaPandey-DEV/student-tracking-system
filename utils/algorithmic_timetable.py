@@ -327,13 +327,15 @@ class GeneticAlgorithmSolver:
 class TimetableGenerator:
     """Main timetable generator class."""
     
-    def __init__(self, algorithm_type: str = 'constraint_satisfaction'):
+    def __init__(self, algorithm_type: str = 'constraint_satisfaction', timeout_seconds: int = 30):
         self.algorithm_type = algorithm_type
+        self.timeout_seconds = timeout_seconds
+        # Initialize solvers with timeout (where applicable)
         self.solvers = {
-            'constraint_satisfaction': ConstraintSatisfactionSolver(),
+            'constraint_satisfaction': ConstraintSatisfactionSolver(timeout_seconds=timeout_seconds),
             'genetic_algorithm': GeneticAlgorithmSolver(),
             'greedy_algorithm': self._greedy_solve,
-            'backtracking': ConstraintSatisfactionSolver()
+            'backtracking': ConstraintSatisfactionSolver(timeout_seconds=timeout_seconds)
         }
     
     def generate_timetable(self, subjects: List[SubjectRequirement], days: int, periods: int, 

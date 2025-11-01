@@ -519,19 +519,24 @@ def manage_timetable(request):
                         continue
                     
                     # Build subject requirements for algorithmic solver
-                    subject_requirements = []
-                    for ts in teacher_subjects:
-                        subject = ts.subject
-                        requirement = {
-                            'subject_id': subject.id,
-                            'subject_code': subject.code,
-                            'subject_name': subject.name,
-                            'credits': subject.credits,
-                            'periods_per_week': subject.credits * 2,  # 2 periods per credit (standard: 1 credit = 2 periods/week)
-                            'teacher_id': ts.teacher.id,
-                            'teacher_name': ts.teacher.name
-                        }
-                        subject_requirements.append(requirement)
+                    # Helper function to build subject requirements list (DRY principle)
+                    def build_subject_requirements(teacher_subjects_list):
+                        """Build subject requirements list from teacher-subject relationships."""
+                        requirements = []
+                        for ts in teacher_subjects_list:
+                            subject = ts.subject
+                            requirements.append({
+                                'subject_id': subject.id,
+                                'subject_code': subject.code,
+                                'subject_name': subject.name,
+                                'credits': subject.credits,
+                                'periods_per_week': subject.credits * 2,  # 2 periods per credit
+                                'teacher_id': ts.teacher.id,
+                                'teacher_name': ts.teacher.name
+                            })
+                        return requirements
+                    
+                    subject_requirements = build_subject_requirements(teacher_subjects)
                     
                     # Limit subjects to prevent memory issues (max 8 subjects per course)
                     if len(subject_requirements) > 8:
@@ -543,39 +548,22 @@ def manage_timetable(request):
                         print(f"DEBUG: Too few subjects ({len(subject_requirements)}) for {course_name} Year {year}, skipping...")
                         continue
                     
-                    # Create algorithmic timetable generator
-                    generator = TimetableGenerator(algorithm_type=algorithm_type)
+                    # Create algorithmic timetable generator with timeout from config
+                    timeout_seconds = getattr(config, 'timeout_seconds', 30)
+                    generator = TimetableGenerator(
+                        algorithm_type=algorithm_type, 
+                        timeout_seconds=timeout_seconds
+                    )
                     
-                    # Generate timetable using algorithm with timeout protection
+                    # Generate timetable using algorithm (timeout is handled internally)
                     result = None
                     try:
-                        import threading
-                        import time
-                        
-                        # Cross-platform timeout solution
-                        timeout_occurred = False
-                        
-                        def timeout_handler():
-                            nonlocal timeout_occurred
-                            timeout_occurred = True
-                        
-                        # Set timeout to 10 seconds to prevent memory issues
-                        timer = threading.Timer(10.0, timeout_handler)
-                        timer.start()
-                        
-                        start_time = time.time()
                         result = generator.generate_timetable(
                             subjects=create_subject_requirements(subject_requirements),
                             days=config.days_per_week,
                             periods=config.periods_per_day,
                             break_periods=config.break_periods
                         )
-                        
-                        timer.cancel()  # Cancel the timer
-                        
-                        # Check if timeout occurred
-                        if timeout_occurred:
-                            raise TimeoutError("Algorithm execution timed out")
                             
                     except TimeoutError:
                         print(f"DEBUG: Algorithm timed out for {course_name} Year {year} Section {section}, skipping...")

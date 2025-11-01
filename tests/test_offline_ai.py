@@ -8,7 +8,9 @@ import sys
 import os
 
 # Add the project root to Python path so we can import Django modules
-sys.path.insert(0, '.')
+# Add project root to path (go up one directory from tests folder)
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'enhanced_timetable_system.settings')
 
 import django
