@@ -48,37 +48,43 @@ class Command(BaseCommand):
         """Clear existing sample data to avoid conflicts"""
         # Clear in reverse dependency order
         from ai_features.models import AIChat, ChatMessage, StudyRecommendation, PerformanceInsight
+        from django.db import transaction
         
-        # Clear AI data
-        ChatMessage.objects.all().delete()
-        AIChat.objects.all().delete()
-        PerformanceInsight.objects.all().delete()
-        StudyRecommendation.objects.all().delete()
-        
-        # Clear attendance and enrollment data
-        Attendance.objects.all().delete()
-        Enrollment.objects.all().delete()
-        
-        # Clear timetable data
-        TimetableEntry.objects.all().delete()
-        TeacherSubject.objects.all().delete()
-        
-        # Clear announcements
-        Announcement.objects.all().delete()
-        
-        # Clear subjects (but keep core structure)
-        Subject.objects.all().delete()
-        
-        # Clear profiles but keep User accounts with specific usernames
-        from accounts.models import StudentProfile, TeacherProfile, AdminProfile
-        StudentProfile.objects.exclude(user__username__in=['admin']).delete()
-        TeacherProfile.objects.exclude(user__username__in=['admin']).delete()
-        
-        # Clear Teacher records (not User accounts)
-        Teacher.objects.all().delete()
-        
-        # Clear users except core admin
-        User.objects.exclude(username='admin').delete()
+        with transaction.atomic():
+            # Clear AI data
+            ChatMessage.objects.all().delete()
+            AIChat.objects.all().delete()
+            PerformanceInsight.objects.all().delete()
+            StudyRecommendation.objects.all().delete()
+            
+            # Clear attendance first (depends on timetable entries)
+            Attendance.objects.all().delete()
+            
+            # Clear timetable entries (depends on subjects and teachers)
+            TimetableEntry.objects.all().delete()
+            
+            # Clear enrollments (depends on subjects and students) - MUST be before subjects
+            Enrollment.objects.all().delete()
+            
+            # Clear teacher-subject relationships
+            TeacherSubject.objects.all().delete()
+            
+            # Clear announcements
+            Announcement.objects.all().delete()
+            
+            # Clear subjects (after enrollments are deleted)
+            Subject.objects.all().delete()
+            
+            # Clear profiles but keep User accounts with specific usernames
+            from accounts.models import StudentProfile, TeacherProfile, AdminProfile
+            StudentProfile.objects.exclude(user__username__in=['admin']).delete()
+            TeacherProfile.objects.exclude(user__username__in=['admin']).delete()
+            
+            # Clear Teacher records (not User accounts)
+            Teacher.objects.all().delete()
+            
+            # Clear users except core admin
+            User.objects.exclude(username='admin').delete()
         
     def create_time_slots(self):
         self.stdout.write('⏰ Creating time slots...')
@@ -335,99 +341,109 @@ class Command(BaseCommand):
         self.stdout.write('   ✓ Teachers created')
 
     def create_diverse_students(self):
-        self.stdout.write('👨‍🎓 Creating diverse student population...')
+        self.stdout.write('👨‍🎓 Creating diverse student population (70 students)...')
         
-        # B.Tech students - All years and multiple sections
-        btech_students = []
+        # Student data - 70 students total
+        first_names_pool = [
+            'Arjun', 'Priya', 'Vikram', 'Neha', 'Rohit', 'Kavya', 'Ankit', 'Pooja', 'Sanjay', 'Anjali',
+            'Rakesh', 'Shreya', 'Karan', 'Divya', 'Harsh', 'Amit', 'Ritu', 'Suresh', 'Geeta', 'Manoj',
+            'Sunita', 'Deepak', 'Rekha', 'Vinod', 'Seema', 'Ashok', 'Meera', 'Rajeev', 'Nisha', 'Sunil',
+            'Rajesh', 'Kavita', 'Santosh', 'Usha', 'Ramesh', 'Lata', 'Mukesh', 'Sushma', 'Naresh', 'Vandana',
+            'Dinesh', 'Kalpana', 'Mahesh', 'Shanti', 'Yogesh', 'Arun', 'Radha', 'Mohan', 'Kamala', 'Gopal',
+            'Sita', 'Hari', 'Gita', 'Krishna', 'Sarita', 'Shyam', 'Mala', 'Raman', 'Sonal', 'Gagan',
+            'Ravi', 'Karan', 'Tanya', 'Nitin', 'Priyanka', 'Manish', 'Swati', 'Varun', 'Jyoti', 'Sachin'
+        ]
         
-        # Year 1 B.Tech - Sections A, B
-        for section in ['A', 'B']:
-            for i in range(1, 16):  # 15 students per section
-                roll = f'BT23CS{section}{i:03d}'
-                username = f'btech_y1_{section.lower()}_{i}'
-                first_names = ['Arjun', 'Priya', 'Vikram', 'Neha', 'Rohit', 'Kavya', 'Ankit', 'Pooja', 'Sanjay', 'Anjali', 'Rakesh', 'Shreya', 'Karan', 'Divya', 'Harsh']
-                last_names = ['Singh', 'Sharma', 'Kumar', 'Gupta', 'Patel', 'Reddy', 'Jain', 'Nair', 'Yadav', 'Mishra', 'Agarwal', 'Verma', 'Chauhan', 'Mehta', 'Sinha']
-                first_name = first_names[i-1]
-                last_name = random.choice(last_names)
-                email = f'{username}@student.edu'
-                btech_students.append((username, first_name, last_name, email, roll, 'B.Tech', 1, section))
+        last_names_pool = [
+            'Singh', 'Sharma', 'Kumar', 'Gupta', 'Patel', 'Reddy', 'Jain', 'Nair', 'Yadav', 'Mishra',
+            'Agarwal', 'Verma', 'Chauhan', 'Mehta', 'Sinha', 'Das', 'Tripathi', 'Saxena', 'Pandey', 'Tiwari',
+            'Shukla', 'Dubey', 'Malhotra', 'Kapoor', 'Shah', 'Joshi', 'Bansal', 'Arora', 'Bhatia', 'Goyal'
+        ]
         
-        # Year 2 B.Tech - Sections A, B
-        for section in ['A', 'B']:
-            for i in range(1, 16):
-                roll = f'BT22CS{section}{i:03d}'
-                username = f'btech_y2_{section.lower()}_{i}'
-                first_names = ['Amit', 'Ritu', 'Suresh', 'Geeta', 'Manoj', 'Sunita', 'Deepak', 'Rekha', 'Vinod', 'Seema', 'Ashok', 'Meera', 'Rajeev', 'Nisha', 'Sunil']
-                last_names = ['Singh', 'Sharma', 'Kumar', 'Gupta', 'Patel', 'Reddy', 'Jain', 'Nair', 'Yadav', 'Mishra', 'Agarwal', 'Verma', 'Chauhan', 'Mehta', 'Sinha']
-                first_name = first_names[i-1]
-                last_name = random.choice(last_names)
-                email = f'{username}@student.edu'
-                btech_students.append((username, first_name, last_name, email, roll, 'B.Tech', 2, section))
+        all_students = []
+        student_counter = 1
         
-        # Year 3 B.Tech - Sections A, B
-        for section in ['A', 'B']:
-            for i in range(1, 16):
-                roll = f'BT21CS{section}{i:03d}'
-                username = f'btech_y3_{section.lower()}_{i}'
-                first_names = ['Rajesh', 'Kavita', 'Santosh', 'Usha', 'Ramesh', 'Lata', 'Mukesh', 'Sushma', 'Naresh', 'Vandana', 'Dinesh', 'Kalpana', 'Mahesh', 'Shanti', 'Yogesh']
-                last_names = ['Singh', 'Sharma', 'Kumar', 'Gupta', 'Patel', 'Reddy', 'Jain', 'Nair', 'Yadav', 'Mishra', 'Agarwal', 'Verma', 'Chauhan', 'Mehta', 'Sinha']
-                first_name = first_names[i-1]
-                last_name = random.choice(last_names)
-                email = f'{username}@student.edu'
-                btech_students.append((username, first_name, last_name, email, roll, 'B.Tech', 3, section))
+        # B.Tech Year 1 - Section A: 10 students
+        for i in range(1, 11):
+            roll = f'BT23CSA{i:03d}'
+            username = f'student{student_counter:03d}'
+            first_name = first_names_pool[(student_counter - 1) % len(first_names_pool)]
+            last_name = random.choice(last_names_pool)
+            email = f'{username}@student.edu'
+            all_students.append((username, first_name, last_name, email, roll, 'B.Tech', 1, 'A'))
+            student_counter += 1
         
-        # Year 4 B.Tech - Sections A, B
-        for section in ['A', 'B']:
-            for i in range(1, 16):
-                roll = f'BT20CS{section}{i:03d}'
-                username = f'btech_y4_{section.lower()}_{i}'
-                first_names = ['Arun', 'Radha', 'Mohan', 'Kamala', 'Gopal', 'Sita', 'Hari', 'Gita', 'Krishna', 'Sarita', 'Shyam', 'Mala', 'Raman', 'Sonal', 'Gagan']
-                last_names = ['Singh', 'Sharma', 'Kumar', 'Gupta', 'Patel', 'Reddy', 'Jain', 'Nair', 'Yadav', 'Mishra', 'Agarwal', 'Verma', 'Chauhan', 'Mehta', 'Sinha']
-                first_name = first_names[i-1]
-                last_name = random.choice(last_names)
-                email = f'{username}@student.edu'
-                btech_students.append((username, first_name, last_name, email, roll, 'B.Tech', 4, section))
+        # B.Tech Year 1 - Section B: 10 students
+        for i in range(1, 11):
+            roll = f'BT23CSB{i:03d}'
+            username = f'student{student_counter:03d}'
+            first_name = first_names_pool[(student_counter - 1) % len(first_names_pool)]
+            last_name = random.choice(last_names_pool)
+            email = f'{username}@student.edu'
+            all_students.append((username, first_name, last_name, email, roll, 'B.Tech', 1, 'B'))
+            student_counter += 1
         
-        # BCA students - All years and sections
-        bca_students = []
+        # B.Tech Year 2 - Section A: 10 students
+        for i in range(1, 11):
+            roll = f'BT22CSA{i:03d}'
+            username = f'student{student_counter:03d}'
+            first_name = first_names_pool[(student_counter - 1) % len(first_names_pool)]
+            last_name = random.choice(last_names_pool)
+            email = f'{username}@student.edu'
+            all_students.append((username, first_name, last_name, email, roll, 'B.Tech', 2, 'A'))
+            student_counter += 1
         
-        # Year 1 BCA - Sections A, B
-        for section in ['A', 'B']:
-            for i in range(1, 11):  # 10 students per section
-                roll = f'BCA23{section}{i:03d}'
-                username = f'bca_y1_{section.lower()}_{i}'
-                first_names = ['Ravi', 'Shreya', 'Karan', 'Tanya', 'Nitin', 'Priyanka', 'Manish', 'Swati', 'Varun', 'Jyoti']
-                last_names = ['Mehta', 'Das', 'Agarwal', 'Mishra', 'Tripathi', 'Saxena', 'Pandey', 'Tiwari', 'Shukla', 'Dubey']
-                first_name = first_names[i-1]
-                last_name = random.choice(last_names)
-                email = f'{username}@student.edu'
-                bca_students.append((username, first_name, last_name, email, roll, 'BCA', 1, section))
+        # B.Tech Year 2 - Section B: 10 students
+        for i in range(1, 11):
+            roll = f'BT22CSB{i:03d}'
+            username = f'student{student_counter:03d}'
+            first_name = first_names_pool[(student_counter - 1) % len(first_names_pool)]
+            last_name = random.choice(last_names_pool)
+            email = f'{username}@student.edu'
+            all_students.append((username, first_name, last_name, email, roll, 'B.Tech', 2, 'B'))
+            student_counter += 1
         
-        # Year 2 BCA - Sections A, B  
-        for section in ['A', 'B']:
-            for i in range(1, 11):
-                roll = f'BCA22{section}{i:03d}'
-                username = f'bca_y2_{section.lower()}_{i}'
-                first_names = ['Sachin', 'Pooja', 'Ajay', 'Nidhi', 'Vikash', 'Komal', 'Deepak', 'Sarita', 'Akhil', 'Rashmi']
-                last_names = ['Mehta', 'Das', 'Agarwal', 'Mishra', 'Tripathi', 'Saxena', 'Pandey', 'Tiwari', 'Shukla', 'Dubey']
-                first_name = first_names[i-1]
-                last_name = random.choice(last_names)
-                email = f'{username}@student.edu'
-                bca_students.append((username, first_name, last_name, email, roll, 'BCA', 2, section))
+        # B.Tech Year 3 - Section A: 8 students
+        for i in range(1, 9):
+            roll = f'BT21CSA{i:03d}'
+            username = f'student{student_counter:03d}'
+            first_name = first_names_pool[(student_counter - 1) % len(first_names_pool)]
+            last_name = random.choice(last_names_pool)
+            email = f'{username}@student.edu'
+            all_students.append((username, first_name, last_name, email, roll, 'B.Tech', 3, 'A'))
+            student_counter += 1
         
-        # Year 3 BCA - Sections A, B
-        for section in ['A', 'B']:
-            for i in range(1, 11):
-                roll = f'BCA21{section}{i:03d}'
-                username = f'bca_y3_{section.lower()}_{i}'
-                first_names = ['Prakash', 'Sapna', 'Aditya', 'Namita', 'Rohit', 'Anjana', 'Sumit', 'Ragini', 'Tarun', 'Shilpa']
-                last_names = ['Mehta', 'Das', 'Agarwal', 'Mishra', 'Tripathi', 'Saxena', 'Pandey', 'Tiwari', 'Shukla', 'Dubey']
-                first_name = first_names[i-1]
-                last_name = random.choice(last_names)
-                email = f'{username}@student.edu'
-                bca_students.append((username, first_name, last_name, email, roll, 'BCA', 3, section))
+        # B.Tech Year 3 - Section B: 7 students
+        for i in range(1, 8):
+            roll = f'BT21CSB{i:03d}'
+            username = f'student{student_counter:03d}'
+            first_name = first_names_pool[(student_counter - 1) % len(first_names_pool)]
+            last_name = random.choice(last_names_pool)
+            email = f'{username}@student.edu'
+            all_students.append((username, first_name, last_name, email, roll, 'B.Tech', 3, 'B'))
+            student_counter += 1
         
-        all_students = btech_students + bca_students
+        # BCA Year 1 - Section A: 8 students
+        for i in range(1, 9):
+            roll = f'BCA23A{i:03d}'
+            username = f'student{student_counter:03d}'
+            first_name = first_names_pool[(student_counter - 1) % len(first_names_pool)]
+            last_name = random.choice(last_names_pool)
+            email = f'{username}@student.edu'
+            all_students.append((username, first_name, last_name, email, roll, 'BCA', 1, 'A'))
+            student_counter += 1
+        
+        # BCA Year 2 - Section A: 7 students
+        for i in range(1, 8):
+            roll = f'BCA22A{i:03d}'
+            username = f'student{student_counter:03d}'
+            first_name = first_names_pool[(student_counter - 1) % len(first_names_pool)]
+            last_name = random.choice(last_names_pool)
+            email = f'{username}@student.edu'
+            all_students.append((username, first_name, last_name, email, roll, 'BCA', 2, 'A'))
+            student_counter += 1
+        
+        # Total: 10+10+10+10+8+7+8+7 = 70 students
         
         # Create student accounts
         for username, first_name, last_name, email, roll_no, course, year, section in all_students:

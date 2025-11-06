@@ -101,11 +101,12 @@ WSGI_APPLICATION = 'enhanced_timetable_system.wsgi.application'
 
 # Database Configuration
 # Priority: DATABASE_URL (PostgreSQL) > MySQL > SQLite
-if 'DATABASE_URL' in os.environ:
+database_url = config('DATABASE_URL', default='')
+if database_url and database_url != '':
     # PostgreSQL Configuration (Render/Heroku style)
     DATABASES = {
         'default': dj_database_url.config(
-            default=config('DATABASE_URL'),
+            default=database_url,
             ssl_require=True
         )
     }

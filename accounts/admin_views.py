@@ -755,11 +755,27 @@ def manage_students(request):
         is_active=True
     ).select_related('student', 'subject').order_by('-enrolled_at')[:10]
     
+    # Calculate course distribution correctly (use all students, not limited)
+    all_students = StudentProfile.objects.all()
+    courses = Course.objects.filter(is_active=True)
+    course_distribution = []
+    for course in courses:
+        student_count = all_students.filter(
+            course=course.name,
+            user__is_active=True
+        ).count()
+        course_distribution.append({
+            'name': course.name,
+            'full_name': course.full_name,
+            'student_count': student_count
+        })
+    
     context = {
         'students': students[:50],  # Limit for performance
         'subjects': subjects,
         'recent_enrollments': recent_enrollments,
-        'courses': Course.objects.filter(is_active=True),
+        'courses': courses,
+        'course_distribution': course_distribution,  # Pass calculated distribution
         'search_query': search_query,
         'course_filter': course_filter,
         'year_filter': year_filter

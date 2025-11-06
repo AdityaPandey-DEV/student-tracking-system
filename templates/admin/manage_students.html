@@ -216,18 +216,11 @@
                     
                     <div class="mt-3">
                         <h6 class="text-muted mb-2">Course Distribution</h6>
-                        {% for course in courses %}
-                            {% with course_students=students|dictsort:"course" %}
-                                {% for student in students %}
-                                    {% if student.course == course.name %}
-                                        <!-- Count would be calculated in view -->
-                                    {% endif %}
-                                {% endfor %}
-                            {% endwith %}
+                        {% for course_info in course_distribution %}
                             <div class="d-flex justify-content-between mb-1">
-                                <small>{{ course.name }}</small>
+                                <small>{{ course_info.name }}</small>
                                 <small class="text-muted">
-                                    {{ students|length }} students
+                                    {{ course_info.student_count }} students
                                 </small>
                             </div>
                         {% endfor %}
