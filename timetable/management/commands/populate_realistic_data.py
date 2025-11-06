@@ -252,6 +252,118 @@ class Command(BaseCommand):
                 }
             )
         
+        # B.Sc subjects
+        try:
+            bsc_course = Course.objects.get(name='B.Sc')
+            bsc_subjects = [
+                # Year 1
+                ('BS101', 'Mathematics I', 1, 1, 4),
+                ('BS102', 'Physics I', 1, 1, 3),
+                ('BS103', 'Chemistry I', 1, 1, 3),
+                ('BS104', 'Mathematics II', 1, 2, 4),
+                ('BS105', 'Physics II', 1, 2, 3),
+                ('BS106', 'Chemistry II', 1, 2, 3),
+                
+                # Year 2
+                ('BS201', 'Advanced Mathematics', 2, 3, 4),
+                ('BS202', 'Statistics', 2, 3, 3),
+                ('BS203', 'Computer Science', 2, 4, 4),
+                ('BS204', 'Research Methodology', 2, 4, 3),
+            ]
+            
+            for code, name, year, semester, credits in bsc_subjects:
+                Subject.objects.get_or_create(
+                    code=code,
+                    course=bsc_course,
+                    defaults={
+                        'name': name,
+                        'year': year,
+                        'semester': semester,
+                        'credits': credits,
+                        'description': f'Core subject for {bsc_course.name} Year {year}'
+                    }
+                )
+        except Course.DoesNotExist:
+            pass
+        
+        # MCA subjects
+        try:
+            mca_course = Course.objects.get(name='MCA')
+            mca_subjects = [
+                # Year 1
+                ('MCA101', 'Advanced Programming', 1, 1, 4),
+                ('MCA102', 'Data Structures & Algorithms', 1, 1, 4),
+                ('MCA103', 'Database Management Systems', 1, 2, 4),
+                ('MCA104', 'Software Engineering', 1, 2, 4),
+            ]
+            
+            for code, name, year, semester, credits in mca_subjects:
+                Subject.objects.get_or_create(
+                    code=code,
+                    course=mca_course,
+                    defaults={
+                        'name': name,
+                        'year': year,
+                        'semester': semester,
+                        'credits': credits,
+                        'description': f'Core subject for {mca_course.name} Year {year}'
+                    }
+                )
+        except Course.DoesNotExist:
+            pass
+        
+        # M.Tech subjects
+        try:
+            mtech_course = Course.objects.get(name='M.Tech')
+            mtech_subjects = [
+                # Year 1
+                ('MT101', 'Advanced Algorithms', 1, 1, 4),
+                ('MT102', 'Machine Learning', 1, 1, 4),
+                ('MT103', 'Distributed Systems', 1, 2, 4),
+                ('MT104', 'Research Methods', 1, 2, 3),
+            ]
+            
+            for code, name, year, semester, credits in mtech_subjects:
+                Subject.objects.get_or_create(
+                    code=code,
+                    course=mtech_course,
+                    defaults={
+                        'name': name,
+                        'year': year,
+                        'semester': semester,
+                        'credits': credits,
+                        'description': f'Core subject for {mtech_course.name} Year {year}'
+                    }
+                )
+        except Course.DoesNotExist:
+            pass
+        
+        # MBA subjects
+        try:
+            mba_course = Course.objects.get(name='MBA')
+            mba_subjects = [
+                # Year 1
+                ('MBA101', 'Business Management', 1, 1, 4),
+                ('MBA102', 'Financial Accounting', 1, 1, 3),
+                ('MBA103', 'Marketing Management', 1, 2, 4),
+                ('MBA104', 'Human Resource Management', 1, 2, 3),
+            ]
+            
+            for code, name, year, semester, credits in mba_subjects:
+                Subject.objects.get_or_create(
+                    code=code,
+                    course=mba_course,
+                    defaults={
+                        'name': name,
+                        'year': year,
+                        'semester': semester,
+                        'credits': credits,
+                        'description': f'Core subject for {mba_course.name} Year {year}'
+                    }
+                )
+        except Course.DoesNotExist:
+            pass
+        
         self.stdout.write('   ✓ Subjects created')
 
     def create_admin_users(self):
@@ -341,9 +453,9 @@ class Command(BaseCommand):
         self.stdout.write('   ✓ Teachers created')
 
     def create_diverse_students(self):
-        self.stdout.write('👨‍🎓 Creating diverse student population (70 students)...')
+        self.stdout.write('👨‍🎓 Creating diverse student population across all courses...')
         
-        # Student data - 70 students total
+        # Extended student data pool
         first_names_pool = [
             'Arjun', 'Priya', 'Vikram', 'Neha', 'Rohit', 'Kavya', 'Ankit', 'Pooja', 'Sanjay', 'Anjali',
             'Rakesh', 'Shreya', 'Karan', 'Divya', 'Harsh', 'Amit', 'Ritu', 'Suresh', 'Geeta', 'Manoj',
@@ -351,13 +463,16 @@ class Command(BaseCommand):
             'Rajesh', 'Kavita', 'Santosh', 'Usha', 'Ramesh', 'Lata', 'Mukesh', 'Sushma', 'Naresh', 'Vandana',
             'Dinesh', 'Kalpana', 'Mahesh', 'Shanti', 'Yogesh', 'Arun', 'Radha', 'Mohan', 'Kamala', 'Gopal',
             'Sita', 'Hari', 'Gita', 'Krishna', 'Sarita', 'Shyam', 'Mala', 'Raman', 'Sonal', 'Gagan',
-            'Ravi', 'Karan', 'Tanya', 'Nitin', 'Priyanka', 'Manish', 'Swati', 'Varun', 'Jyoti', 'Sachin'
+            'Ravi', 'Tanya', 'Nitin', 'Priyanka', 'Manish', 'Swati', 'Varun', 'Jyoti', 'Sachin', 'Pooja',
+            'Ajay', 'Nidhi', 'Vikash', 'Komal', 'Sarita', 'Akhil', 'Rashmi', 'Prakash', 'Sapna', 'Aditya',
+            'Namita', 'Anjana', 'Sumit', 'Ragini', 'Tarun', 'Shilpa', 'Aman', 'Isha', 'Vivek', 'Riya'
         ]
         
         last_names_pool = [
             'Singh', 'Sharma', 'Kumar', 'Gupta', 'Patel', 'Reddy', 'Jain', 'Nair', 'Yadav', 'Mishra',
             'Agarwal', 'Verma', 'Chauhan', 'Mehta', 'Sinha', 'Das', 'Tripathi', 'Saxena', 'Pandey', 'Tiwari',
-            'Shukla', 'Dubey', 'Malhotra', 'Kapoor', 'Shah', 'Joshi', 'Bansal', 'Arora', 'Bhatia', 'Goyal'
+            'Shukla', 'Dubey', 'Malhotra', 'Kapoor', 'Shah', 'Joshi', 'Bansal', 'Arora', 'Bhatia', 'Goyal',
+            'Khan', 'Ali', 'Sheikh', 'Ansari', 'Hussain', 'Rahman', 'Ahmad', 'Malik', 'Qureshi', 'Hasan'
         ]
         
         all_students = []
@@ -443,7 +558,57 @@ class Command(BaseCommand):
             all_students.append((username, first_name, last_name, email, roll, 'BCA', 2, 'A'))
             student_counter += 1
         
-        # Total: 10+10+10+10+8+7+8+7 = 70 students
+        # B.Sc Year 1 - Section A: 8 students
+        for i in range(1, 9):
+            roll = f'BS23A{i:03d}'
+            username = f'student{student_counter:03d}'
+            first_name = first_names_pool[(student_counter - 1) % len(first_names_pool)]
+            last_name = random.choice(last_names_pool)
+            email = f'{username}@student.edu'
+            all_students.append((username, first_name, last_name, email, roll, 'B.Sc', 1, 'A'))
+            student_counter += 1
+        
+        # B.Sc Year 2 - Section A: 7 students
+        for i in range(1, 8):
+            roll = f'BS22A{i:03d}'
+            username = f'student{student_counter:03d}'
+            first_name = first_names_pool[(student_counter - 1) % len(first_names_pool)]
+            last_name = random.choice(last_names_pool)
+            email = f'{username}@student.edu'
+            all_students.append((username, first_name, last_name, email, roll, 'B.Sc', 2, 'A'))
+            student_counter += 1
+        
+        # MCA Year 1 - Section A: 6 students
+        for i in range(1, 7):
+            roll = f'MCA23A{i:03d}'
+            username = f'student{student_counter:03d}'
+            first_name = first_names_pool[(student_counter - 1) % len(first_names_pool)]
+            last_name = random.choice(last_names_pool)
+            email = f'{username}@student.edu'
+            all_students.append((username, first_name, last_name, email, roll, 'MCA', 1, 'A'))
+            student_counter += 1
+        
+        # M.Tech Year 1 - Section A: 5 students
+        for i in range(1, 6):
+            roll = f'MT23A{i:03d}'
+            username = f'student{student_counter:03d}'
+            first_name = first_names_pool[(student_counter - 1) % len(first_names_pool)]
+            last_name = random.choice(last_names_pool)
+            email = f'{username}@student.edu'
+            all_students.append((username, first_name, last_name, email, roll, 'M.Tech', 1, 'A'))
+            student_counter += 1
+        
+        # MBA Year 1 - Section A: 6 students
+        for i in range(1, 7):
+            roll = f'MBA23A{i:03d}'
+            username = f'student{student_counter:03d}'
+            first_name = first_names_pool[(student_counter - 1) % len(first_names_pool)]
+            last_name = random.choice(last_names_pool)
+            email = f'{username}@student.edu'
+            all_students.append((username, first_name, last_name, email, roll, 'MBA', 1, 'A'))
+            student_counter += 1
+        
+        # Total: 10+10+10+10+8+7+8+7+8+7+6+5+6 = 102 students across all courses
         
         # Create student accounts
         for username, first_name, last_name, email, roll_no, course, year, section in all_students:
