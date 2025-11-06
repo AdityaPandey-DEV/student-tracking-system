@@ -105,7 +105,8 @@ if 'DATABASE_URL' in os.environ:
     # PostgreSQL Configuration (Render/Heroku style)
     DATABASES = {
         'default': dj_database_url.config(
-            default=config('DATABASE_URL')
+            default=config('DATABASE_URL'),
+            ssl_require=True
         )
     }
 elif config('USE_MYSQL', default=False, cast=bool) or 'DB_PASSWORD' in os.environ:

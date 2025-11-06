@@ -11,6 +11,7 @@ import json
 import re
 
 from .models import User, StudentProfile, AdminProfile, TeacherProfile, OTP, EmailOTP
+from timetable.models import Course
 from utils.notifications import send_otp_notification
 import logging
 
@@ -45,6 +46,7 @@ def register_choice(request):
 
 def student_register(request):
     """Student registration view with OTP verification."""
+    courses = Course.objects.filter(is_active=True).order_by('name')
     if request.method == 'POST':
         step = request.POST.get('step', '1')
         
@@ -55,7 +57,9 @@ def student_register(request):
             # Step 2: Verify OTP and complete registration
             return handle_student_registration_step2(request)
     
-    return render(request, 'accounts/student_register.html')
+    return render(request, 'accounts/student_register.html', {
+        'courses': courses,
+    })
 
 def handle_student_registration_step1(request):
     """Handle step 1 of student registration - collect info and send Email OTP (FREE)."""
@@ -112,7 +116,10 @@ def handle_student_registration_step1(request):
         if errors:
             for error in errors:
                 messages.error(request, error)
-            return render(request, 'accounts/student_register.html')
+            courses = Course.objects.filter(is_active=True).order_by('name')
+            return render(request, 'accounts/student_register.html', {
+                'courses': courses,
+            })
         
         # Generate and send Email OTP (FREE!)
         otp_code = EmailOTP.generate_otp(email, 'registration')
@@ -146,19 +153,27 @@ def handle_student_registration_step1(request):
             else:
                 messages.success(request, f'📧 OTP sent to {email}. Please check your email and enter the 6-digit code to complete registration.')
             
+            courses = Course.objects.filter(is_active=True).order_by('name')
             return render(request, 'accounts/student_register.html', {
                 'step': 2,
                 'email': email,
                 'show_otp': bool(error_message),  # Show OTP in template if email failed
-                'otp_code': otp_code if error_message else None  # Pass OTP code to template
+                'otp_code': otp_code if error_message else None,  # Pass OTP code to template
+                'courses': courses,
             })
         else:
             messages.error(request, f'Failed to send OTP email: {error_message if error_message else "Unknown error"}. Please try again or contact support.')
-            return render(request, 'accounts/student_register.html')
+            courses = Course.objects.filter(is_active=True).order_by('name')
+            return render(request, 'accounts/student_register.html', {
+                'courses': courses,
+            })
             
     except Exception as e:
         messages.error(request, 'An error occurred. Please try again.')
-        return render(request, 'accounts/student_register.html')
+        courses = Course.objects.filter(is_active=True).order_by('name')
+        return render(request, 'accounts/student_register.html', {
+            'courses': courses,
+        })
 
 def handle_student_registration_step2(request):
     """Handle step 2 of student registration - verify OTP and create account."""
@@ -172,9 +187,11 @@ def handle_student_registration_step2(request):
         
         if not otp_code:
             messages.error(request, 'Please enter the OTP code.')
+            courses = Course.objects.filter(is_active=True).order_by('name')
             return render(request, 'accounts/student_register.html', {
                 'step': 2,
-                'email': reg_data['email']
+                'email': reg_data['email'],
+                'courses': courses,
             })
         
         # Verify Email OTP
@@ -207,16 +224,20 @@ def handle_student_registration_step2(request):
             return redirect('accounts:login')
         else:
             messages.error(request, 'Invalid or expired OTP. Please try again.')
+            courses = Course.objects.filter(is_active=True).order_by('name')
             return render(request, 'accounts/student_register.html', {
                 'step': 2,
-                'email': reg_data['email']
+                'email': reg_data['email'],
+                'courses': courses,
             })
             
     except Exception as e:
         messages.error(request, 'An error occurred during verification. Please try again.')
+        courses = Course.objects.filter(is_active=True).order_by('name')
         return render(request, 'accounts/student_register.html', {
             'step': 2,
-            'email': request.session.get('reg_data', {}).get('email', '')
+            'email': request.session.get('reg_data', {}).get('email', ''),
+            'courses': courses,
         })
 
 def admin_register(request):

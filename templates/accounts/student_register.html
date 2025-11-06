@@ -130,12 +130,9 @@
                                 <div class="form-floating">
                                     <select class="form-select" id="course" name="course" required>
                                         <option value="">Choose Course</option>
-                                        <option value="B.Tech">B.Tech - Bachelor of Technology</option>
-                                        <option value="BCA">BCA - Bachelor of Computer Applications</option>
-                                        <option value="B.Sc">B.Sc - Bachelor of Science</option>
-                                        <option value="MCA">MCA - Master of Computer Applications</option>
-                                        <option value="M.Tech">M.Tech - Master of Technology</option>
-                                        <option value="MBA">MBA - Master of Business Administration</option>
+                                        {% for c in courses %}
+                                        <option value="{{ c.name }}" data-duration="{{ c.duration_years }}">{{ c.name }} - {{ c.full_name }}</option>
+                                        {% endfor %}
                                     </select>
                                     <label for="course">
                                         <i class="fas fa-graduation-cap me-2"></i>Course
@@ -146,10 +143,6 @@
                                 <div class="form-floating">
                                     <select class="form-select" id="year" name="year" required>
                                         <option value="">Year</option>
-                                        <option value="1">1st Year</option>
-                                        <option value="2">2nd Year</option>
-                                        <option value="3">3rd Year</option>
-                                        <option value="4">4th Year</option>
                                     </select>
                                     <label for="year">
                                         <i class="fas fa-calendar-alt me-2"></i>Year
@@ -363,5 +356,33 @@
             }, 500);
         }
     });
+
+    // Dynamically populate Year options from selected Course (DB-backed duration)
+    function populateYears() {
+        const courseSelect = document.getElementById('course');
+        const yearSelect = document.getElementById('year');
+        if (!courseSelect || !yearSelect) return;
+        const selected = courseSelect.options[courseSelect.selectedIndex];
+        const duration = parseInt(selected?.getAttribute('data-duration')) || 4;
+        // Clear existing
+        yearSelect.innerHTML = '';
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Year';
+        yearSelect.appendChild(placeholder);
+        const maxYears = Math.min(duration, 4); // constrained by Subject.year
+        const suffix = ['','st','nd','rd','th'];
+        for (let y = 1; y <= maxYears; y++) {
+            const opt = document.createElement('option');
+            opt.value = String(y);
+            const suf = (y<=3)?suffix[y]:'th';
+            opt.textContent = `${y}${suf} Year`;
+            yearSelect.appendChild(opt);
+        }
+    }
+
+    document.getElementById('course')?.addEventListener('change', populateYears);
+    // Initialize on load
+    populateYears();
 </script>
 {% endblock %}
